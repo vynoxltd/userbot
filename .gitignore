@@ -5,8 +5,13 @@ my_userbot_session.py
 
 # databases
 data.db
+
+# ignore all data files
 data/*
+
+# but keep required base files
 !data/.gitkeep
+!data/vars.json
 
 # runtime
 saved_media/

@@ -113,3 +113,36 @@ async def stop_bot(name: str):
 
 def list_running_bots():
     return list(RUNNING_BOTS.keys())
+    # =====================
+# VARS STORAGE (JSON)
+# =====================
+import json
+import os
+
+VARS_FILE = "data/vars.json"
+os.makedirs("data", exist_ok=True)
+
+if os.path.exists(VARS_FILE):
+    with open(VARS_FILE, "r") as f:
+        _VARS = json.load(f)
+else:
+    _VARS = {}
+
+def save_vars():
+    with open(VARS_FILE, "w") as f:
+        json.dump(_VARS, f, indent=2)
+
+def set_var(key: str, value: str):
+    _VARS[key] = value
+    save_vars()
+
+def get_var(key: str, default=None):
+    return _VARS.get(key, default)
+
+def del_var(key: str):
+    if key in _VARS:
+        del _VARS[key]
+        save_vars()
+
+def all_vars():
+    return _VARS

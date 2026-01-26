@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import log_error, mark_plugin_loaded
+from plugins.utils import log_error, mark_plugin_loaded, auto_delete
 from datetime import datetime
 import os, uuid
 
@@ -63,10 +63,10 @@ async def ss_handler(client: Client, m):
 
         path = os.path.join(SAVE_DIR, filename)
 
-        # download media
+        # ⬇️ download media (temporary)
         await reply.download(file_name=path)
 
-        # send to Saved Messages (NO parse_mode)
+        # 📤 send to Saved Messages
         await client.send_document(
             TARGET_CHAT,
             path,
@@ -83,6 +83,13 @@ async def ss_handler(client: Client, m):
             os.remove(path)
         except:
             pass
+
+        # ✅ confirmation (auto delete)
+        msg = await client.send_message(
+            m.chat.id,
+            "✅ Saved to Saved Messages"
+        )
+        await auto_delete(msg, 5)
 
     except Exception as e:
         await log_error(client, "ss.py", e)

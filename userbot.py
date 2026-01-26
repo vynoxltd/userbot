@@ -12,7 +12,8 @@ if not STRING_SESSION:
     raise RuntimeError("SESSION_STRING is missing in environment variables")
 
 app = Client(
-    session_string=STRING_SESSION,   # ✅ correct
+    name="userbot",                 # 🔥 THIS WAS MISSING
+    session_string=STRING_SESSION,  # ✅ correct
     api_id=API_ID,
     api_hash=API_HASH,
     plugins=dict(root="plugins")

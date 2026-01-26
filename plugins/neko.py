@@ -25,7 +25,7 @@ NEKO_FOLDERS = {
 )
 async def neko_handler(client: Client, m):
     try:
-        # ❌ delete command instantly
+        # ❌ delete command safely
         try:
             await m.delete()
         except:
@@ -61,10 +61,18 @@ async def neko_handler(client: Client, m):
 
         file_path = os.path.join(folder, random.choice(files))
 
+        # 👇 reply logic
+        reply_to_id = (
+            m.reply_to_message.id
+            if m.reply_to_message
+            else None
+        )
+
         sent = await client.send_document(
             chat_id=m.chat.id,
             document=file_path,
-            caption=f"😺 {cmd}~"
+            caption=f"😺 {cmd}~",
+            reply_to_message_id=reply_to_id
         )
 
         # ⏱ auto delete after **30 seconds**

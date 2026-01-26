@@ -2,6 +2,7 @@ from pyrogram import Client, filters
 from plugins.owner import owner_only
 from plugins.utils import auto_delete, mark_plugin_loaded
 
+# ✅ mark plugin loaded (health system)
 mark_plugin_loaded("help3.py")
 
 HELP3_TEXT = """
@@ -11,78 +12,56 @@ USERBOT HELP 3 (VARS • BOT MANAGER • NEKO)
 VARIABLES (VARS)
 ====================
 
-.setvar <KEY> <VALUE> | exm: .setvar SPAM_BOT_TOKEN 123456:ABC
-Save a variable (token / key / value)
+.setvar <KEY> <VALUE>
+exm: .setvar SPAM_BOT_TOKEN 123456:ABC
 
-.getvar <KEY> | exm: .getvar SPAM_BOT_TOKEN
-Get saved variable value
+.getvar <KEY>
+exm: .getvar SPAM_BOT_TOKEN
 
-.delvar <KEY> | exm: .delvar SPAM_BOT_TOKEN
-Delete a saved variable
+.delvar <KEY>
+exm: .delvar SPAM_BOT_TOKEN
 
-.vars | exm: .vars
-List all saved variables
+.vars
+exm: .vars
 
 
 ====================
 BOT MANAGER (MULTI BOT)
 ====================
 
-.startbot <name> <VAR_KEY> | exm: .startbot spam SPAM_BOT_TOKEN
-Start a bot using saved token
+.startbot <name> <VAR_KEY>
+exm: .startbot spam SPAM_BOT_TOKEN
 
-.stopbot <name> | exm: .stopbot spam
-Stop a running bot
+.stopbot <name>
+exm: .stopbot spam
 
-.bots | exm: .bots
-Show all running bots
+.bots
+exm: .bots
 
 
 ====================
 NEKO FUN COMMANDS
 ====================
 
-.neko | exm: .neko
-Random neko image / gif
+.neko
+.nekokiss
+.nekohug
+.nekoslap
+.nekofuck
 
-.nekokiss | exm: .nekokiss
-Random neko kiss gif
-
-.nekohug | exm: .nekohug
-Random neko hug gif
-
-.nekoslap | exm: .nekoslap
-Random neko slap gif
-
-.nekofuck | exm: .nekofuck
-Random neko adult gif
-
-• Reply / without reply — both work  
-• Media auto deletes after 30 seconds  
-• Files picked randomly from assets folder  
-
-
-====================
-ERROR & HEALTH SYSTEM
-====================
-
-• Automatic error logging is ENABLED  
-• Errors are sent to Saved Messages  
-• Plugin health is tracked automatically  
-
-Check broken plugins:
-.help broken
+• Reply / without reply — both work
+• Media auto deletes after 30 seconds
+• Files picked randomly from assets folder
 
 
 ====================
 NOTES
 ====================
 
-• All commands are owner-only  
-• Vars are stored in data/vars.json  
-• Error logs are NOT deleted automatically  
-• Key ≠ Bot name  
-• Bot name = running bot label  
+• All commands are owner-only
+• Vars are stored in data/vars.json
+• Key ≠ Bot name
+• Bot name = running bot label
 
 Example flow:
 .setvar SPAM_BOT_TOKEN <token>

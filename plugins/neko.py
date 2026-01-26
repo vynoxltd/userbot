@@ -18,7 +18,7 @@ NEKO_FOLDERS = {
 }
 
 # =====================
-# NEKO HANDLER
+# NEKO HANDLER (NO REPLY MODE)
 # =====================
 @Client.on_message(
     owner_only & filters.command(list(NEKO_FOLDERS.keys()), ".")
@@ -61,21 +61,14 @@ async def neko_handler(client: Client, m):
 
         file_path = os.path.join(folder, random.choice(files))
 
-        # 👇 reply logic
-        reply_to_id = (
-            m.reply_to_message.id
-            if m.reply_to_message
-            else None
-        )
-
+        # ✅ NORMAL SEND (NO REPLY)
         sent = await client.send_document(
             chat_id=m.chat.id,
             document=file_path,
-            caption=f"😺 {cmd}~",
-            reply_to_message_id=reply_to_id
+            caption=f"😺 {cmd}~"
         )
 
-        # ⏱ auto delete after **30 seconds**
+        # ⏱ auto delete after 30 seconds (minimum)
         await auto_delete(sent, 30)
 
     except Exception as e:

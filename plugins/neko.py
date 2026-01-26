@@ -44,7 +44,11 @@ async def neko_handler(client: Client, m):
 
         files = [
             f for f in os.listdir(folder)
-            if f.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".webp"))
+            if f.lower().endswith((
+                ".jpg", ".jpeg", ".png",
+                ".gif", ".webp",
+                ".mp4"
+            ))
         ]
 
         if not files:

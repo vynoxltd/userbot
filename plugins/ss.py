@@ -1,12 +1,13 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import log_error
+from plugins.utils import log_error, mark_plugin_loaded
 from datetime import datetime
 import os, uuid
-from plugins.utils import mark_plugin_loaded
+
 mark_plugin_loaded("ss.py")
 
-TARGET_CHAT = "@testuserbotss"
+# 🔔 Saved Messages
+TARGET_CHAT = "me"
 
 SAVE_DIR = "saved_media"
 os.makedirs(SAVE_DIR, exist_ok=True)
@@ -21,7 +22,7 @@ async def ss_handler(client: Client, m):
     try:
         reply = m.reply_to_message
 
-        # delete command instantly
+        # delete command safely
         try:
             await m.delete()
         except:
@@ -41,7 +42,7 @@ async def ss_handler(client: Client, m):
         if not media:
             return
 
-        # ONLY self-destruct / view-once
+        # ✅ ONLY self-destruct / view-once
         if not getattr(media, "ttl_seconds", None):
             return
 
@@ -55,14 +56,17 @@ async def ss_handler(client: Client, m):
                 ".mp3" if reply.audio else
                 ".bin"
             )
-            filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:5]}{ext}"
+            filename = (
+                f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_"
+                f"{uuid.uuid4().hex[:6]}{ext}"
+            )
 
         path = os.path.join(SAVE_DIR, filename)
 
-        # download
+        # download media
         await reply.download(file_name=path)
 
-        # send to group/channel (NO parse_mode ❗)
+        # send to Saved Messages (NO parse_mode)
         await client.send_document(
             TARGET_CHAT,
             path,
@@ -73,6 +77,12 @@ async def ss_handler(client: Client, m):
                 f"Time: {datetime.now().strftime('%d %b %Y %I:%M %p')}"
             )
         )
+
+        # 🧹 delete local file after send
+        try:
+            os.remove(path)
+        except:
+            pass
 
     except Exception as e:
         await log_error(client, "ss.py", e)

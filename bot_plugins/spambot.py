@@ -19,16 +19,17 @@ Disable spam bot
 .spambot stop
 Stop running spam
 
-.spambot (count)
+.spambot count
 Spam in same group
 
-.spambot (count) (chat_id or @username)
+.spambot count chat_id
 Spam in target group
 
-Examples:
-.spambot 10
-.spambot 50 -1001234567890
-.spambot 20 @mygroup
+.spambot count @username
+Spam in target group
+
+Reply based:
+(reply) .spambot count
 """
 )
 
@@ -37,19 +38,19 @@ Examples:
 # =====================
 SPAM_TEXTS = [
     "Papa hu mai tera 😈",
-    "htt lodu Lalit 🥱",
-    "Abe jana Gendú",
     "Abe htt noob 😂",
     "Tujhse nahi hoga, rehne de 🤡",
     "Skill issue bro 😎",
     "Practice kar le beta 🔥",
 ]
 
-SPAM_DELAY = 1.2        # seconds
-AUTO_DELETE_TIME = 50  # seconds
+SPAM_DELAY = 1.2
+AUTO_DELETE_TIME = 50
 
 SPAM_ENABLED = True
-SPAM_TASK = None       # asyncio task holder
+SPAM_RUNNING = False
+STOP_FLAG = False
+
 
 # =====================
 # AUTO DELETE
@@ -61,25 +62,13 @@ async def auto_delete(msg):
     except:
         pass
 
-# =====================
-# SPAM LOOP
-# =====================
-async def spam_loop(client, count, target_chat):
-    try:
-        for i in range(count):
-            text = SPAM_TEXTS[i % len(SPAM_TEXTS)]
-            sent = await client.send_message(target_chat, text)
-            asyncio.create_task(auto_delete(sent))
-            await asyncio.sleep(SPAM_DELAY)
-    except asyncio.CancelledError:
-        pass
 
 # =====================
 # SPAMBOT COMMAND
 # =====================
 @Client.on_message(filters.command("spambot", "."))
 async def spambot_handler(client: Client, m):
-    global SPAM_ENABLED, SPAM_TASK
+    global SPAM_ENABLED, SPAM_RUNNING, STOP_FLAG
 
     # delete command
     try:
@@ -92,8 +81,8 @@ async def spambot_handler(client: Client, m):
     # -----------------
     if len(m.command) == 2 and m.command[1] in ("on", "off"):
         SPAM_ENABLED = m.command[1] == "on"
-        status = "ENABLED ✅" if SPAM_ENABLED else "DISABLED ❌"
-        msg = await client.send_message(m.chat.id, f"🤖 SpamBot {status}")
+        txt = "ENABLED ✅" if SPAM_ENABLED else "DISABLED ❌"
+        msg = await client.send_message(m.chat.id, f"🤖 SpamBot {txt}")
         await asyncio.sleep(4)
         await msg.delete()
         return
@@ -102,35 +91,16 @@ async def spambot_handler(client: Client, m):
     # STOP
     # -----------------
     if len(m.command) == 2 and m.command[1] == "stop":
-        if SPAM_TASK and not SPAM_TASK.done():
-            SPAM_TASK.cancel()
-            SPAM_TASK = None
-            msg = await client.send_message(m.chat.id, "🛑 Spam stopped")
-        else:
-            msg = await client.send_message(m.chat.id, "ℹ️ No spam running")
-        await asyncio.sleep(4)
-        await msg.delete()
+        STOP_FLAG = True
         return
 
-    if not SPAM_ENABLED:
-        return
-
-    if SPAM_TASK and not SPAM_TASK.done():
-        msg = await client.send_message(m.chat.id, "⚠️ Spam already running")
-        await asyncio.sleep(4)
-        await msg.delete()
+    if not SPAM_ENABLED or SPAM_RUNNING:
         return
 
     # -----------------
-    # COUNT
+    # COUNT CHECK
     # -----------------
     if len(m.command) < 2 or not m.command[1].isdigit():
-        msg = await client.send_message(
-            m.chat.id,
-            "Usage:\n.spambot (count)\n.spambot (count) (chat_id or @username)"
-        )
-        await asyncio.sleep(5)
-        await msg.delete()
         return
 
     count = int(m.command[1])
@@ -138,7 +108,7 @@ async def spambot_handler(client: Client, m):
         return
 
     # -----------------
-    # TARGET
+    # TARGET CHAT
     # -----------------
     if len(m.command) >= 3:
         target = m.command[2]
@@ -152,9 +122,29 @@ async def spambot_handler(client: Client, m):
     else:
         target_chat = m.chat.id
 
-    # -----------------
+    reply_msg = m.reply_to_message
+
+    # =====================
     # START SPAM
-    # -----------------
-    SPAM_TASK = asyncio.create_task(
-        spam_loop(client, count, target_chat)
-)
+    # =====================
+    SPAM_RUNNING = True
+    STOP_FLAG = False
+
+    try:
+        for i in range(count):
+            if STOP_FLAG:
+                break
+
+            text = SPAM_TEXTS[i % len(SPAM_TEXTS)]
+
+            if reply_msg:
+                sent = await reply_msg.reply(text)
+            else:
+                sent = await client.send_message(target_chat, text)
+
+            asyncio.create_task(auto_delete(sent))
+            await asyncio.sleep(SPAM_DELAY)
+
+    finally:
+        SPAM_RUNNING = False
+        STOP_FLAG = False

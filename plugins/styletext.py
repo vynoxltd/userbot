@@ -1,12 +1,11 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
 from plugins.utils import auto_delete, log_error, mark_plugin_loaded
-import html
 
 mark_plugin_loaded("styletext.py")
 
 # =====================
-# TEXT STYLES (HTML SAFE)
+# TEXT STYLES (HTML BASED)
 # =====================
 STYLES = {
     "bold": lambda t: f"<b>{t}</b>",
@@ -24,16 +23,21 @@ STYLES = {
 @Client.on_message(owner_only & filters.command(list(STYLES.keys()), "."))
 async def style_handler(client: Client, m):
     try:
+        await m.delete()
+
         if len(m.command) < 2:
-            msg = await m.reply(
-                "❌ Usage:\n"
-                ".bold text\n"
-                ".italic text\n"
-                ".mono text\n"
-                ".strike text\n"
-                ".underline text\n"
-                ".spoiler text\n"
-                ".space text"
+            msg = await client.send_message(
+                m.chat.id,
+                (
+                    "❌ Usage:\n"
+                    ".bold text\n"
+                    ".italic text\n"
+                    ".mono text\n"
+                    ".strike text\n"
+                    ".underline text\n"
+                    ".spoiler text\n"
+                    ".space text"
+                )
             )
             await auto_delete(msg, 6)
             return
@@ -41,22 +45,15 @@ async def style_handler(client: Client, m):
         cmd = m.command[0].lower()
         text = m.text.split(None, 1)[1]
 
-        # HTML escape (VERY IMPORTANT)
-        safe_text = html.escape(text)
+        styled_text = STYLES[cmd](text)
 
-        styled = STYLES[cmd](safe_text)
-
-        sent = await m.reply(
-            styled,
+        sent = await client.send_message(
+            m.chat.id,
+            styled_text,
             parse_mode="HTML"
         )
 
         await auto_delete(sent, 40)
-
-        try:
-            await m.delete()
-        except:
-            pass
 
     except Exception as e:
         await log_error(client, "styletext.py", e)

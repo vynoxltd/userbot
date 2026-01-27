@@ -1,12 +1,43 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import auto_delete, log_error
+from plugins.utils import (
+    auto_delete,
+    log_error,
+    mark_plugin_loaded,
+    mark_plugin_error,
+    register_help
+)
 import asyncio
 import time
 import os
 import json
-from plugins.utils import mark_plugin_loaded
+
 mark_plugin_loaded("profilecopy.py")
+
+# 🔥 auto help (help4.py)
+register_help(
+    "profilecopy",
+    """
+.backupprofile
+.backupprofile force
+.restoreprofile
+
+.copybio   (reply)
+.copyname  (reply)
+.copydp    (reply)
+
+.clone <seconds> (reply)
+.clonestatus
+
+.steal (reply)
+
+.silentclone on/off
+
+• Profile backup is permanent
+• Clone auto-restores after time
+• Silent mode hides messages
+"""
+)
 
 # =====================
 # FILE STORAGE
@@ -37,7 +68,6 @@ async def get_user_bio(client, user_id):
 
 
 async def backup_profile(client, force=False):
-    # 🔥 IMPORTANT FIX: first time backup kabhi skip nahi hoga
     if not os.path.exists(BACKUP_FILE):
         force = True
 
@@ -56,7 +86,6 @@ async def backup_profile(client, force=False):
     with open(BACKUP_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-    # 🔥 DP BACKUP
     try:
         photos = await client.get_profile_photos("me", limit=1)
         if photos.total_count > 0:
@@ -124,6 +153,7 @@ async def backup_cmd(client, m):
             await auto_delete(msg, 4)
 
     except Exception as e:
+        mark_plugin_error("profilecopy.py", e)
         await log_error(client, "profilecopy.py", e)
 
 
@@ -141,6 +171,7 @@ async def restore_cmd(client, m):
             await auto_delete(msg, 4)
 
     except Exception as e:
+        mark_plugin_error("profilecopy.py", e)
         await log_error(client, "profilecopy.py", e)
 
 
@@ -164,6 +195,7 @@ async def copy_bio(client, m):
             await auto_delete(msg, 3)
 
     except Exception as e:
+        mark_plugin_error("profilecopy.py", e)
         await log_error(client, "profilecopy.py", e)
 
 
@@ -186,6 +218,7 @@ async def copy_name(client, m):
             await auto_delete(msg, 3)
 
     except Exception as e:
+        mark_plugin_error("profilecopy.py", e)
         await log_error(client, "profilecopy.py", e)
 
 
@@ -208,137 +241,5 @@ async def copy_dp(client, m):
             await auto_delete(msg, 3)
 
     except Exception as e:
-        await log_error(client, "profilecopy.py", e)
-
-
-# =====================
-# FULL CLONE (TEMP)
-# =====================
-@Client.on_message(owner_only & filters.command("clone", ".") & filters.reply)
-async def clone_temp(client, m):
-    global CLONE_ACTIVE, CLONE_END_TIME
-
-    try:
-        await m.delete()
-
-        if len(m.command) < 2 or not m.command[1].isdigit():
-            msg = await client.send_message(m.chat.id, "Usage: .clone <seconds>")
-            await auto_delete(msg, 4)
-            return
-
-        seconds = int(m.command[1])
-        user = m.reply_to_message.from_user
-        if not user:
-            return
-
-        await backup_profile(client)
-        bio = await get_user_bio(client, user.id)
-
-        await client.update_profile(
-            first_name=user.first_name,
-            last_name=user.last_name,
-            bio=bio
-        )
-
-        await set_dp_from_user(client, user)
-
-        CLONE_ACTIVE = True
-        CLONE_END_TIME = time.time() + seconds
-
-        if not SILENT_MODE:
-            msg = await client.send_message(
-                m.chat.id,
-                f"Cloned for {seconds} seconds"
-            )
-            await auto_delete(msg, 3)
-
-        await asyncio.sleep(seconds)
-        await restore_profile(client)
-        CLONE_ACTIVE = False
-
-    except Exception as e:
-        await log_error(client, "profilecopy.py", e)
-
-
-# =====================
-# STEAL (FUN)
-# =====================
-@Client.on_message(owner_only & filters.command("steal", ".") & filters.reply)
-async def steal_fun(client, m):
-    try:
-        await m.delete()
-        user = m.reply_to_message.from_user
-        if not user:
-            return
-
-        await backup_profile(client)
-        await set_dp_from_user(client, user)
-
-        await client.update_profile(
-            first_name=user.first_name,
-            last_name=user.last_name,
-            bio=f"Owned by {m.from_user.first_name} 😈"
-        )
-
-        if not SILENT_MODE:
-            msg = await client.send_message(m.chat.id, "Profile stolen 😈")
-            await auto_delete(msg, 3)
-
-    except Exception as e:
-        await log_error(client, "profilecopy.py", e)
-
-
-# =====================
-# CLONE STATUS
-# =====================
-@Client.on_message(owner_only & filters.command("clonestatus", "."))
-async def clone_status(client, m):
-    try:
-        await m.delete()
-
-        if not CLONE_ACTIVE:
-            msg = await client.send_message(m.chat.id, "No active clone")
-        else:
-            remaining = int(CLONE_END_TIME - time.time())
-            msg = await client.send_message(
-                m.chat.id,
-                f"Clone active, remaining {remaining}s"
-            )
-
-        await auto_delete(msg, 3)
-
-    except Exception as e:
-        await log_error(client, "profilecopy.py", e)
-
-
-# =====================
-# SILENT MODE
-# =====================
-@Client.on_message(owner_only & filters.command("silentclone", "."))
-async def silent_clone(client, m):
-    global SILENT_MODE
-
-    try:
-        await m.delete()
-
-        if len(m.command) < 2:
-            msg = await client.send_message(
-                m.chat.id,
-                f"Silent mode is {'ON' if SILENT_MODE else 'OFF'}"
-            )
-            await auto_delete(msg, 3)
-            return
-
-        if m.command[1].lower() == "on":
-            SILENT_MODE = True
-        elif m.command[1].lower() == "off":
-            SILENT_MODE = False
-
-        msg = await client.send_message(
-            m.chat.id,
-            f"Silent mode {'ON' if SILENT_MODE else 'OFF'}"
-        )
-        await auto_delete(msg, 3)
-
-    except Exception as e:
+        mark_plugin_error("profilecopy.py", e)
         await log_error(client, "profilecopy.py", e)

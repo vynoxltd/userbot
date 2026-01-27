@@ -22,7 +22,6 @@ Use:
 Available plugins:
 basic
 cleanup
-style
 spam
 forward
 notes
@@ -31,6 +30,7 @@ games
 fun
 random
 auto
+mention
 dev
 info
 
@@ -60,19 +60,10 @@ HELP_PLUGINS = {
 .delall | exm: (reply user) .delall
 """,
 
-"style": """
-.bold <text> | exm: .bold hello
-.italic <text> | exm: .italic hello
-.mono <text> | exm: .mono hello
-.emoji <text> | exm: .emoji hello
-.space <text> | exm: .space hello
-""",
-
 "spam": """
 .spam <count> <text> | exm: .spam 5 hi
 .delayspam <count> <delay> <text> | exm: .delayspam 5 1.5 hi
 .replyspam <count> | exm: (reply) .replyspam 10
-.tag <count> <text> <user> | exm: .tag 5 hi @user
 """,
 
 "forward": """
@@ -133,6 +124,14 @@ HELP_PLUGINS = {
 .ablacklist | exm: (reply) .ablacklist
 .awhitelistdel | exm: (reply) .awhitelistdel
 .ablacklistdel | exm: (reply) .ablacklistdel
+""",
+
+"mention": """
+.mention <text> | exm: .mention Hello everyone
+
+• Mentions users using username / inline mention
+• Admin = more mentions
+• Non-admin = limited mentions
 """,
 
 "dev": """

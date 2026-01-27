@@ -1,8 +1,13 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import auto_delete, log_error
+from plugins.utils import (
+    auto_delete,
+    log_error,
+    mark_plugin_loaded,
+    mark_plugin_error
+)
 import asyncio
-from plugins.utils import mark_plugin_loaded
+
 mark_plugin_loaded("forward.py")
 
 # =====================
@@ -28,6 +33,7 @@ async def fwd(client: Client, m):
         await auto_delete(done, 3)
 
     except Exception as e:
+        mark_plugin_error("forward.py", e)
         await log_error(client, "forward.py", e)
 
 
@@ -46,6 +52,7 @@ async def silent_fwd(client: Client, m):
         await m.reply_to_message.forward(target)
 
     except Exception as e:
+        mark_plugin_error("forward.py", e)
         await log_error(client, "forward.py", e)
 
 
@@ -63,6 +70,7 @@ async def fwd_here(client: Client, m):
         await auto_delete(done, 3)
 
     except Exception as e:
+        mark_plugin_error("forward.py", e)
         await log_error(client, "forward.py", e)
 
 
@@ -74,7 +82,7 @@ async def multi_fwd(client: Client, m):
     try:
         await m.delete()
 
-        if len(m.command) < 3:
+        if len(m.command) < 3 or not m.command[2].isdigit():
             msg = await client.send_message(
                 m.chat.id,
                 "Usage: `.mfwd <chat_id | @username> <count>`"
@@ -88,6 +96,8 @@ async def multi_fwd(client: Client, m):
         start_id = m.reply_to_message.id
         msg_ids = list(range(start_id, start_id + count))
 
+        success = 0
+
         for msg_id in msg_ids:
             try:
                 await client.forward_messages(
@@ -95,15 +105,17 @@ async def multi_fwd(client: Client, m):
                     from_chat_id=m.chat.id,
                     message_ids=msg_id
                 )
-                await asyncio.sleep(0.3)
+                success += 1
+                await asyncio.sleep(0.4)
             except:
                 pass
 
         done = await client.send_message(
             m.chat.id,
-            f"✅ Forwarded {len(msg_ids)} messages"
+            f"✅ Forwarded {success} messages"
         )
         await auto_delete(done, 3)
 
     except Exception as e:
+        mark_plugin_error("forward.py", e)
         await log_error(client, "forward.py", e)

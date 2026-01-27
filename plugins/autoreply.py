@@ -8,7 +8,7 @@ from plugins.utils import (
     get_var
 )
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 mark_plugin_loaded("autoreply.py")
 
@@ -46,7 +46,9 @@ def get_delay():
         return 0
 
 def get_time_based_text():
-    hour = datetime.now().hour
+    # 🇮🇳 IST = UTC + 5:30
+    ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    hour = ist_time.hour
 
     if 5 <= hour < 12:
         return TIME_TEXTS["morning"]
@@ -71,7 +73,7 @@ def save_list(name, data):
     set_var(name, ",".join(str(x) for x in data))
 
 # =====================
-# AUTO REPLY HANDLER
+# AUTO REPLY HANDLER (DM ONLY)
 # =====================
 @Client.on_message(filters.private & ~filters.bot & ~filters.me)
 async def auto_reply_handler(client: Client, m):
@@ -84,13 +86,15 @@ async def auto_reply_handler(client: Client, m):
         blacklist = get_list("AUTOREPLY_BLACKLIST")
         whitelist = get_list("AUTOREPLY_WHITELIST")
 
+        # ❌ blacklist
         if user_id in blacklist:
             return
 
+        # ✅ whitelist only
         if whitelist and user_id not in whitelist:
             return
 
-        # 🧹 delete old auto reply (if exists)
+        # 🧹 delete old auto reply
         old_msg_id = LAST_REPLY.get(user_id)
         if old_msg_id:
             try:
@@ -225,7 +229,6 @@ async def list_manager(client: Client, m):
 
     except Exception as e:
         await log_error(client, "autoreply.py", e)
-
 
 @Client.on_message(owner_only & filters.command(["awhitelistdel", "ablacklistdel"], ".") & filters.reply)
 async def list_remove(client: Client, m):

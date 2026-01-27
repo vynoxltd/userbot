@@ -8,32 +8,28 @@ from plugins.utils import (
     auto_delete,
     log_error,
     mark_plugin_loaded,
-    register_help          # 🔥 HELP4
+    register_help
 )
 
-# 🔥 mark plugin loaded (health system)
 mark_plugin_loaded("vars.py")
 
-# 🔥 HELP4 AUTO REGISTER
+# 🔥 help4 register
 register_help(
     "vars",
     """
-VARIABLES / CONFIG
+.setvar KEY VALUE
+Example: .setvar TEST hello
 
-.setvar <KEY> <VALUE>
-exm: .setvar API_TOKEN 123456
+.getvar KEY
+Example: .getvar TEST
 
-.getvar <KEY>
-exm: .getvar API_TOKEN
-
-.delvar <KEY>
-exm: .delvar API_TOKEN
+.delvar KEY
+Example: .delvar TEST
 
 .vars
-exm: .vars
+List all variables
 
-• Variables are stored permanently
-• Used by botmanager, autoreply, etc.
+• Stored in data/vars.json
 """
 )
 
@@ -41,7 +37,7 @@ exm: .vars
 # SET VAR
 # =====================
 @Client.on_message(owner_only & filters.command("setvar", "."))
-async def setvar_cmd(client, m):
+async def setvar_cmd(client: Client, m):
     try:
         await m.delete()
 
@@ -50,8 +46,7 @@ async def setvar_cmd(client, m):
                 m.chat.id,
                 "Usage:\n.setvar KEY VALUE"
             )
-            await auto_delete(msg, 5)
-            return
+            return await auto_delete(msg, 5)
 
         key = m.command[1].upper()
         value = m.text.split(None, 2)[2]
@@ -60,7 +55,7 @@ async def setvar_cmd(client, m):
 
         msg = await client.send_message(
             m.chat.id,
-            f"✅ Variable saved\n`{key}`"
+            f"✅ Saved `{key}`"
         )
         await auto_delete(msg, 5)
 
@@ -72,7 +67,7 @@ async def setvar_cmd(client, m):
 # GET VAR
 # =====================
 @Client.on_message(owner_only & filters.command("getvar", "."))
-async def getvar_cmd(client, m):
+async def getvar_cmd(client: Client, m):
     try:
         await m.delete()
 
@@ -81,8 +76,7 @@ async def getvar_cmd(client, m):
                 m.chat.id,
                 "Usage:\n.getvar KEY"
             )
-            await auto_delete(msg, 5)
-            return
+            return await auto_delete(msg, 5)
 
         key = m.command[1].upper()
         value = get_var(key)
@@ -108,7 +102,7 @@ async def getvar_cmd(client, m):
 # DELETE VAR
 # =====================
 @Client.on_message(owner_only & filters.command("delvar", "."))
-async def delvar_cmd(client, m):
+async def delvar_cmd(client: Client, m):
     try:
         await m.delete()
 
@@ -117,15 +111,14 @@ async def delvar_cmd(client, m):
                 m.chat.id,
                 "Usage:\n.delvar KEY"
             )
-            await auto_delete(msg, 5)
-            return
+            return await auto_delete(msg, 5)
 
         key = m.command[1].upper()
         del_var(key)
 
         msg = await client.send_message(
             m.chat.id,
-            f"🗑 Variable deleted: `{key}`"
+            f"🗑 Deleted `{key}`"
         )
         await auto_delete(msg, 5)
 
@@ -137,21 +130,19 @@ async def delvar_cmd(client, m):
 # LIST VARS
 # =====================
 @Client.on_message(owner_only & filters.command("vars", "."))
-async def vars_cmd(client, m):
+async def vars_cmd(client: Client, m):
     try:
         await m.delete()
 
         data = all_vars()
-
         if not data:
             msg = await client.send_message(
                 m.chat.id,
                 "No variables saved"
             )
-            await auto_delete(msg, 5)
-            return
+            return await auto_delete(msg, 5)
 
-        text = "📦 SAVED VARIABLES\n\n"
+        text = "📦 VARIABLES\n\n"
         for k in data:
             text += f"• `{k}`\n"
 

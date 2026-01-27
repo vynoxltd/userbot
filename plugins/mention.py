@@ -1,4 +1,5 @@
 from pyrogram import Client, filters
+from pyrogram.enums import ParseMode
 from plugins.owner import owner_only
 from plugins.utils import (
     log_error,
@@ -14,8 +15,8 @@ MAX_MENTIONS_USER = 10
 
 async def is_admin(client: Client, chat_id: int, user_id: int) -> bool:
     try:
-        m = await client.get_chat_member(chat_id, user_id)
-        return m.status in ("administrator", "creator")
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in ("administrator", "creator")
     except:
         return False
 
@@ -67,11 +68,11 @@ async def mention_cmd(client: Client, m):
         await client.send_message(
             chat_id,
             mention_text,
-            parse_mode="html",   # ✅ Pyrogram compatible
+            parse_mode=ParseMode.HTML,   # ✅ ONLY CORRECT WAY
             disable_web_page_preview=True
         )
 
     except Exception as e:
-        # 🔥 VERY IMPORTANT
+        # 🔥 update health + log
         mark_plugin_error("mention.py", e)
         await log_error(client, "mention.py", e)

@@ -87,9 +87,13 @@ async def spambot_handler(client: Client, m):
         # -----------------
         if len(m.command) == 2 and m.command[1] in ("on", "off"):
             SPAM_ENABLED = m.command[1] == "on"
-            txt = "ENABLED ✅" if SPAM_ENABLED else "DISABLED ❌"
-            msg = await client.send_message(m.chat.id, f"🤖 SpamBot {txt}")
-            await asyncio.sleep(4)
+            status = "ENABLED ✅" if SPAM_ENABLED else "DISABLED ❌"
+
+            msg = await client.send_message(
+                m.chat.id,
+                f"🤖 SpamBot {status}"
+            )
+            await asyncio.sleep(3)
             await msg.delete()
             return
 
@@ -98,6 +102,13 @@ async def spambot_handler(client: Client, m):
         # -----------------
         if len(m.command) == 2 and m.command[1] == "stop":
             STOP_FLAG = True
+
+            msg = await client.send_message(
+                m.chat.id,
+                "🛑 Spam Stopped"
+            )
+            await asyncio.sleep(3)
+            await msg.delete()
             return
 
         if not SPAM_ENABLED or SPAM_RUNNING:
@@ -158,4 +169,3 @@ async def spambot_handler(client: Client, m):
     except Exception as e:
         mark_plugin_error("spambot.py", e)
         await log_error(client, "spambot.py", e)
-

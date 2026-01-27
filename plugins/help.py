@@ -56,28 +56,28 @@ HELP_PLUGINS = {
 
 "cleanup": """
 .purge | exm: (reply) .purge
-.clean <count> | exm: .clean 10
+.clean [count] | exm: .clean 10
 .del | exm: (reply) .del
 .delall | exm: (reply user) .delall
 """,
 
 "spam": """
-.spam <count> <text> | exm: .spam 5 hi
-.delayspam <count> <delay> <text> | exm: .delayspam 5 1.5 hi
-.replyspam <count> | exm: (reply) .replyspam 10
+.spam [count] [text] | exm: .spam 5 hi
+.delayspam [count] [delay] [text] | exm: .delayspam 5 1.5 hi
+.replyspam [count] | exm: (reply) .replyspam 10
 """,
 
 "forward": """
-.fwd <chat_id> | exm: .fwd -100123456
-.sfwd <chat_id> | exm: .sfwd -100123456
+.fwd <chat_id] | exm: .fwd -100123456
+.sfwd <chat_id] | exm: .sfwd -100123456
 .fwdhere | exm: (reply) .fwdhere
-.mfwd <chat_id> <count> | exm: .mfwd -100123456 5
+.mfwd <chat_id] <count] | exm: .mfwd -100123456 5
 """,
 
 "notes": """
-.setnote <name> <text> | exm: .setnote test hello
-.getnote <name> | exm: .getnote test
-.delnote <name> | exm: .delnote test
+.setnote <name] <text] | exm: .setnote test hello
+.getnote <name] | exm: .getnote test
+.delnote <name] | exm: .delnote test
 """,
 
 "media": """
@@ -106,8 +106,8 @@ HELP_PLUGINS = {
 .dare | exm: .dare
 .joke | exm: .joke
 .quote | exm: .quote
-.insult <user> | exm: .insult @user
-.compliment <user> | exm: .compliment @user
+.insult <user] | exm: .insult @user
+.compliment <user] | exm: .compliment @user
 """,
 
 "auto": """
@@ -116,10 +116,10 @@ HELP_PLUGINS = {
 
 .autoreplydelay <sec> | exm: .autoreplydelay 5
 
-.setmorning <text>
-.setafternoon <text>
-.setevening <text>
-.setnight <text>
+.setmorning <text]
+.setafternoon <text>]
+.setevening <text]
+.setnight <text]
 
 .awhitelist | exm: (reply) .awhitelist
 .ablacklist | exm: (reply) .ablacklist
@@ -128,7 +128,7 @@ HELP_PLUGINS = {
 """,
 
 "mention": """
-.mention <text> | exm: .mention Hello everyone
+.mention <text] | exm: .mention Hello everyone
 
 • Mentions users using username / inline mention
 • Admin = more mentions
@@ -136,16 +136,16 @@ HELP_PLUGINS = {
 """,
 
 "botmanager": """
-.addbot <name> <token>
-.startbot <name>
-.stopbot <name>
-.delbot <name>
+.addbot <name] <token]
+.startbot <name]
+.stopbot <name]
+.delbot <name]
 .bots
 """,
 
 "dev": """
-.eval <code> | exm: .eval print("hi")
-.exec <cmd> | exm: .exec ls
+.eval <code] | exm: .eval print("hi")
+.exec <cmd] | exm: .exec ls
 """,
 
 "info": """

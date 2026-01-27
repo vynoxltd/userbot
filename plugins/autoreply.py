@@ -8,11 +8,17 @@ from plugins.utils import (
     get_var
 )
 import asyncio
+from datetime import datetime
 
 mark_plugin_loaded("autoreply.py")
 
 # =====================
-# DEFAULT VALUES
+# MEMORY (PER USER)
+# =====================
+LAST_REPLY = {}   # user_id -> message_id
+
+# =====================
+# DEFAULT TEXTS
 # =====================
 DEFAULT_TEXT = (
     "👋 Hello!\n\n"
@@ -20,20 +26,40 @@ DEFAULT_TEXT = (
     "Please leave your message 😊"
 )
 
+TIME_TEXTS = {
+    "morning": "☀️ Good morning!\nI will reply soon 😊",
+    "afternoon": "🌤 Hello!\nI am busy right now.",
+    "evening": "🌙 Good evening!\nWill get back to you soon.",
+    "night": "🌌 It's late night.\nPlease text, I’ll reply later 🙏"
+}
+
 # =====================
 # HELPERS
 # =====================
 def is_enabled():
     return get_var("AUTOREPLY_ON", "off") == "on"
 
-def get_reply_text():
-    return get_var("AUTOREPLY_TEXT", DEFAULT_TEXT)
-
 def get_delay():
     try:
         return int(get_var("AUTOREPLY_DELAY", "0"))
     except:
         return 0
+
+def get_time_based_text():
+    hour = datetime.now().hour
+
+    if 5 <= hour < 12:
+        return TIME_TEXTS["morning"]
+    elif 12 <= hour < 18:
+        return TIME_TEXTS["afternoon"]
+    elif 18 <= hour < 23:
+        return TIME_TEXTS["evening"]
+    else:
+        return TIME_TEXTS["night"]
+
+def get_reply_text():
+    custom = get_var("AUTOREPLY_TEXT")
+    return custom if custom else get_time_based_text()
 
 def get_list(name):
     raw = get_var(name, "")
@@ -43,7 +69,6 @@ def get_list(name):
 
 def save_list(name, data):
     set_var(name, ",".join(str(x) for x in data))
-
 
 # =====================
 # AUTO REPLY HANDLER
@@ -59,23 +84,29 @@ async def auto_reply_handler(client: Client, m):
         blacklist = get_list("AUTOREPLY_BLACKLIST")
         whitelist = get_list("AUTOREPLY_WHITELIST")
 
-        # blacklist → never reply
         if user_id in blacklist:
             return
 
-        # whitelist present → reply only to them
         if whitelist and user_id not in whitelist:
             return
+
+        # 🧹 delete old auto reply (if exists)
+        old_msg_id = LAST_REPLY.get(user_id)
+        if old_msg_id:
+            try:
+                await client.delete_messages(m.chat.id, old_msg_id)
+            except:
+                pass
 
         delay = get_delay()
         if delay > 0:
             await asyncio.sleep(delay)
 
-        await m.reply_text(get_reply_text())
+        sent = await m.reply_text(get_reply_text())
+        LAST_REPLY[user_id] = sent.id
 
     except Exception as e:
         await log_error(client, "autoreply.py", e)
-
 
 # =====================
 # AUTOREPLY ON / OFF
@@ -108,9 +139,8 @@ async def autoreply_toggle(client: Client, m):
     except Exception as e:
         await log_error(client, "autoreply.py", e)
 
-
 # =====================
-# SET REPLY TEXT
+# SET CUSTOM TEXT
 # =====================
 @Client.on_message(owner_only & filters.command("setautoreply", "."))
 async def set_autoreply_text(client: Client, m):
@@ -136,7 +166,6 @@ async def set_autoreply_text(client: Client, m):
 
     except Exception as e:
         await log_error(client, "autoreply.py", e)
-
 
 # =====================
 # SET DELAY
@@ -164,7 +193,6 @@ async def set_delay(client: Client, m):
 
     except Exception as e:
         await log_error(client, "autoreply.py", e)
-
 
 # =====================
 # WHITELIST / BLACKLIST

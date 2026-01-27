@@ -6,12 +6,44 @@ from plugins.utils import (
     mark_plugin_loaded,
     mark_plugin_error,
     set_var,
-    get_var
+    get_var,
+    register_help        # 🔥 AUTO HELP
 )
 import asyncio
 from datetime import datetime, timedelta
 
+# =====================
+# PLUGIN LOAD
+# =====================
 mark_plugin_loaded("autoreply.py")
+
+# =====================
+# AUTO HELP REGISTER
+# =====================
+register_help(
+    "auto",
+    """
+.autoreply on | off
+Enable / disable auto reply
+
+.autoreplydelay <seconds>
+Set reply delay
+
+.setmorning <text>
+.setafternoon <text>
+.setevening <text>
+.setnight <text>
+
+.awhitelist | (reply)
+.ablacklist | (reply)
+.awhitelistdel | (reply)
+.ablacklistdel | (reply)
+
+• DM only
+• Time based replies
+• One reply per user
+"""
+)
 
 # =====================
 # MEMORY (per user)
@@ -34,14 +66,16 @@ TIME_TEXTS = {
 def is_enabled():
     return get_var("AUTOREPLY_ON", "off") == "on"
 
+
 def get_delay():
     try:
         return int(get_var("AUTOREPLY_DELAY", "0"))
     except:
         return 0
 
+
 def get_time_based_text():
-    # 🇮🇳 IST time (FIXED & SAFE)
+    # 🇮🇳 IST time
     ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
     hour = ist_time.hour
 
@@ -54,14 +88,17 @@ def get_time_based_text():
     else:
         return get_var("AUTOREPLY_NIGHT", TIME_TEXTS["night"])
 
+
 def get_list(name):
     raw = get_var(name, "")
     if not raw:
         return []
     return [int(x) for x in raw.split(",") if x.isdigit()]
 
+
 def save_list(name, data):
     set_var(name, ",".join(str(x) for x in data))
+
 
 # =====================
 # AUTO REPLY HANDLER (DM ONLY)
@@ -86,7 +123,7 @@ async def auto_reply_handler(client: Client, m):
         if whitelist and user_id not in whitelist:
             return
 
-        # 🧹 delete old autoreply if exists
+        # 🧹 delete old reply
         old_msg_id = LAST_REPLY.get(user_id)
         if old_msg_id:
             try:
@@ -104,6 +141,7 @@ async def auto_reply_handler(client: Client, m):
     except Exception as e:
         mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
+
 
 # =====================
 # AUTOREPLY ON / OFF
@@ -136,6 +174,7 @@ async def autoreply_toggle(client: Client, m):
     except Exception as e:
         mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
+
 
 # =====================
 # SET TIME BASED TEXTS
@@ -178,6 +217,7 @@ async def set_time_text(client: Client, m):
         mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
 
+
 # =====================
 # SET DELAY
 # =====================
@@ -205,6 +245,7 @@ async def set_delay_cmd(client: Client, m):
     except Exception as e:
         mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
+
 
 # =====================
 # WHITELIST / BLACKLIST
@@ -242,6 +283,7 @@ async def list_add(client: Client, m):
     except Exception as e:
         mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
+
 
 @Client.on_message(
     owner_only &

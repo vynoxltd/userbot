@@ -13,19 +13,13 @@ from datetime import datetime, timedelta
 mark_plugin_loaded("autoreply.py")
 
 # =====================
-# MEMORY (PER USER)
+# MEMORY (per user)
 # =====================
 LAST_REPLY = {}   # user_id -> message_id
 
 # =====================
-# DEFAULT TEXTS
+# DEFAULT TIME TEXTS
 # =====================
-DEFAULT_TEXT = (
-    "👋 Hello!\n\n"
-    "I am currently unavailable.\n"
-    "Please leave your message 😊"
-)
-
 TIME_TEXTS = {
     "morning": "☀️ Good morning!\nI will reply soon 😊",
     "afternoon": "🌤 Hello!\nI am busy right now.",
@@ -46,22 +40,18 @@ def get_delay():
         return 0
 
 def get_time_based_text():
-    # 🇮🇳 IST = UTC + 5:30
+    # 🇮🇳 IST time
     ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
     hour = ist_time.hour
 
     if 5 <= hour < 12:
-        return TIME_TEXTS["morning"]
+        return get_var("AUTOREPLY_MORNING", TIME_TEXTS["morning"])
     elif 12 <= hour < 18:
-        return TIME_TEXTS["afternoon"]
+        return get_var("AUTOREPLY_AFTERNOON", TIME_TEXTS["afternoon"])
     elif 18 <= hour < 23:
-        return TIME_TEXTS["evening"]
+        return get_var("AUTOREPLY_EVENING", TIME_TEXTS["evening"])
     else:
-        return TIME_TEXTS["night"]
-
-def get_reply_text():
-    custom = get_var("AUTOREPLY_TEXT")
-    return custom if custom else get_time_based_text()
+        return get_var("AUTOREPLY_NIGHT", TIME_TEXTS["night"])
 
 def get_list(name):
     raw = get_var(name, "")
@@ -86,15 +76,13 @@ async def auto_reply_handler(client: Client, m):
         blacklist = get_list("AUTOREPLY_BLACKLIST")
         whitelist = get_list("AUTOREPLY_WHITELIST")
 
-        # ❌ blacklist
         if user_id in blacklist:
             return
 
-        # ✅ whitelist only
         if whitelist and user_id not in whitelist:
             return
 
-        # 🧹 delete old auto reply
+        # 🧹 delete old autoreply if exists
         old_msg_id = LAST_REPLY.get(user_id)
         if old_msg_id:
             try:
@@ -106,7 +94,7 @@ async def auto_reply_handler(client: Client, m):
         if delay > 0:
             await asyncio.sleep(delay)
 
-        sent = await m.reply_text(get_reply_text())
+        sent = await m.reply_text(get_time_based_text())
         LAST_REPLY[user_id] = sent.id
 
     except Exception as e:
@@ -144,27 +132,38 @@ async def autoreply_toggle(client: Client, m):
         await log_error(client, "autoreply.py", e)
 
 # =====================
-# SET CUSTOM TEXT
+# SET TIME BASED TEXTS
 # =====================
-@Client.on_message(owner_only & filters.command("setautoreply", "."))
-async def set_autoreply_text(client: Client, m):
+@Client.on_message(owner_only & filters.command(
+    ["setmorning", "setafternoon", "setevening", "setnight"], "."
+))
+async def set_time_text(client: Client, m):
     try:
         await m.delete()
 
         if len(m.command) < 2:
             msg = await client.send_message(
                 m.chat.id,
-                "Usage:\n.setautoreply <text>"
+                "Usage:\n.setmorning <text>"
             )
             await auto_delete(msg, 5)
             return
 
+        cmd = m.command[0]
         text = m.text.split(None, 1)[1]
-        set_var("AUTOREPLY_TEXT", text)
+
+        key_map = {
+            "setmorning": "AUTOREPLY_MORNING",
+            "setafternoon": "AUTOREPLY_AFTERNOON",
+            "setevening": "AUTOREPLY_EVENING",
+            "setnight": "AUTOREPLY_NIGHT",
+        }
+
+        set_var(key_map[cmd], text)
 
         msg = await client.send_message(
             m.chat.id,
-            "✅ Auto reply text updated"
+            f"✅ {cmd[3:].capitalize()} auto-reply updated"
         )
         await auto_delete(msg, 4)
 
@@ -175,7 +174,7 @@ async def set_autoreply_text(client: Client, m):
 # SET DELAY
 # =====================
 @Client.on_message(owner_only & filters.command("autoreplydelay", "."))
-async def set_delay(client: Client, m):
+async def set_delay_cmd(client: Client, m):
     try:
         await m.delete()
 
@@ -201,22 +200,21 @@ async def set_delay(client: Client, m):
 # =====================
 # WHITELIST / BLACKLIST
 # =====================
-@Client.on_message(owner_only & filters.command(["awhitelist", "ablacklist"], ".") & filters.reply)
-async def list_manager(client: Client, m):
+@Client.on_message(owner_only & filters.command(
+    ["awhitelist", "ablacklist"], ".") & filters.reply
+)
+async def list_add(client: Client, m):
     try:
         await m.delete()
 
         user_id = m.reply_to_message.from_user.id
-        cmd = m.command[0]
-
         key = (
             "AUTOREPLY_WHITELIST"
-            if cmd == "awhitelist"
+            if m.command[0] == "awhitelist"
             else "AUTOREPLY_BLACKLIST"
         )
 
         data = get_list(key)
-
         if user_id not in data:
             data.append(user_id)
             save_list(key, data)
@@ -230,22 +228,21 @@ async def list_manager(client: Client, m):
     except Exception as e:
         await log_error(client, "autoreply.py", e)
 
-@Client.on_message(owner_only & filters.command(["awhitelistdel", "ablacklistdel"], ".") & filters.reply)
+@Client.on_message(owner_only & filters.command(
+    ["awhitelistdel", "ablacklistdel"], ".") & filters.reply
+)
 async def list_remove(client: Client, m):
     try:
         await m.delete()
 
         user_id = m.reply_to_message.from_user.id
-        cmd = m.command[0]
-
         key = (
             "AUTOREPLY_WHITELIST"
-            if cmd == "awhitelistdel"
+            if m.command[0] == "awhitelistdel"
             else "AUTOREPLY_BLACKLIST"
         )
 
         data = get_list(key)
-
         if user_id in data:
             data.remove(user_id)
             save_list(key, data)

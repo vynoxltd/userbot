@@ -19,9 +19,9 @@ def build_main_help():
     plugins = sorted(get_all_help().keys())
 
     text = (
-        "USERBOT HELP\n\n"
+        "USERBOT HELP (AUTO)\n\n"
         "Use:\n"
-        ".help <plugin>\n\n"
+        ".help4 <plugin>\n\n"
         "Available plugins:\n"
     )
 
@@ -30,18 +30,18 @@ def build_main_help():
 
     text += (
         "\nExtra:\n"
-        ".help all\n"
-        ".help broken\n"
+        ".help4 all\n"
+        ".help4 broken\n"
     )
 
     return text
 
 
 # =====================
-# HELP COMMAND
+# HELP4 COMMAND
 # =====================
-@Client.on_message(owner_only & filters.command("help", "."))
-async def help_cmd(client: Client, m):
+@Client.on_message(owner_only & filters.command("help4", "."))
+async def help4_cmd(client: Client, m):
     try:
         await m.delete()
     except:
@@ -51,7 +51,7 @@ async def help_cmd(client: Client, m):
         help_data = get_all_help()
 
         # -----------------
-        # .help
+        # .help4
         # -----------------
         if len(m.command) == 1:
             msg = await m.reply(build_main_help())
@@ -61,7 +61,7 @@ async def help_cmd(client: Client, m):
         arg = m.command[1].lower()
 
         # -----------------
-        # .help all
+        # .help4 all
         # -----------------
         if arg == "all":
             text = "ALL COMMANDS\n\n"
@@ -79,7 +79,7 @@ async def help_cmd(client: Client, m):
             return
 
         # -----------------
-        # .help broken
+        # .help4 broken
         # -----------------
         if arg == "broken":
             health = get_plugin_health()
@@ -104,7 +104,7 @@ async def help_cmd(client: Client, m):
             return
 
         # -----------------
-        # .help <plugin>
+        # .help4 <plugin>
         # -----------------
         text = help_data.get(arg)
         if not text:

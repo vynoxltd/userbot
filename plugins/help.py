@@ -31,6 +31,7 @@ fun
 random
 auto
 mention
+botmanager
 dev
 info
 
@@ -132,6 +133,24 @@ HELP_PLUGINS = {
 • Mentions users using username / inline mention
 • Admin = more mentions
 • Non-admin = limited mentions
+""",
+
+# ✅ NEW: BOT MANAGER HELP
+"botmanager": """
+.addbot <name> <token>
+exm: .addbot spam 123456:ABCDEF
+
+.startbot <name>
+exm: .startbot spam
+
+.stopbot <name>
+exm: .stopbot spam
+
+.delbot <name>
+exm: .delbot spam
+
+.bots
+exm: .bots
 """,
 
 "dev": """

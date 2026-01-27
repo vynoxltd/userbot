@@ -19,11 +19,12 @@ mark_plugin_loaded("explain.py")
 register_help(
     "explain",
     """
-.explain <topic>
+.explain (topic)
 
 Examples:
 .explain autoreply
 .explain spam
+.explain spambot
 .explain vars
 .explain botmanager
 
@@ -78,34 +79,43 @@ IMPORTANT RULES
 • Messages vars.json me save hote hain
 """,
 
-    "whitelist": """
-🟢 WHITELIST – KYA HAI?
+    "spambot": """
+🤖 SPAMBOT – FULL EXPLANATION
 
-Whitelist ka matlab:
-→ Auto reply sirf selected users ko
+SpamBot ek **separate bot** hota hai
+jo groups me automatic spam karta hai.
 
-Use tab hota hai jab:
-• Sabko reply nahi chahiye
-• Sirf important logon ko reply chahiye
+BASIC CONTROL
+.spambot on
+→ Spam bot enable
 
-Use:
-Reply karke .awhitelist
-Remove: .awhitelistdel
-""",
+.spambot off
+→ Spam bot disable
 
-    "blacklist": """
-🔴 BLACKLIST – KYA HAI?
+.spambot stop
+→ Chal raha spam turant band
 
-Blacklist ka matlab:
-→ Is user ko kabhi auto reply nahi
+NORMAL SPAM
+.spambot 10
+→ Isi group me 10 messages spam
 
-Use:
-Reply karke .ablacklist
-Remove: .ablacklistdel
+TARGET GROUP SPAM
+.spambot 20 -1001234567890
+→ Specific group ID me spam
 
-NOTE:
-Agar user whitelist + blacklist dono me ho
-→ ❌ Reply nahi jayega
+.spambot 15 @groupusername
+→ Username wale group me spam
+
+REPLY BASED SPAM
+(reply) .spambot 10
+→ Jis message par reply kiya hai
+usi user ko spam replies
+
+IMPORTANT POINTS
+• Ek time par ek spam run hota hai
+• Flood limit ka dhyan rakho
+• Bot spam karta hai, user ID safe rehti hai
+• Messages auto delete hote hain (50 sec)
 """,
 
     "botmanager": """
@@ -155,26 +165,24 @@ USE CASE:
 """,
 
     "spam": """
-📢 SPAM – KYA KARTA HAI?
-
-Spam commands repeated messages bhejte hain.
+📢 USERBOT SPAM – BASIC SPAM
 
 .spam 5 hello
-→ 5 baar hello
+→ 5 baar message
 
 .delayspam 5 1.5 hi
-→ 5 messages, har 1.5 sec baad
+→ Delay ke sath spam
 
 .replyspam 10
-→ Replied message 10 baar
+→ Replied message spam
 
 NOTE:
-• Flood control ka dhyan rakho
-• Zyada spam se account restrict ho sakta hai
+• Ye userbot spam hai
+• Account restriction ka risk hota hai
 """,
 
     "cleanup": """
-🧹 CLEANUP – MESSAGES DELETE
+🧹 CLEANUP – MESSAGE DELETE
 
 .purge
 → Reply se neeche sab delete
@@ -187,9 +195,6 @@ NOTE:
 
 .delall
 → Replied user ke sab messages delete
-
-NOTE:
-• Mostly groups ke liye useful
 """,
 
     "notes": """
@@ -203,93 +208,58 @@ NOTE:
 
 .delnote name
 → Note delete
-
-USE CASE:
-• Repeated replies
-• Templates
-• Info store
 """,
 
     "media": """
 📂 MEDIA TOOLS
 
 .ss
-→ View-once / self-destruct media save
+→ View-once media save
 
 .save
-→ Normal media save (reply karke)
+→ Normal media save
 
 NOTE:
-• Media Saved Messages me jata hai
-• Disk clean se temp files delete ho sakti hain
+Saved Messages me jata hai
 """,
 
     "mention": """
 📣 MENTION – MASS TAG
 
 .mention Hello
-→ Recent users ko tag karta hai
+→ Recent users ko tag
 
-RULES:
-• Admin ho → zyada mentions
-• Normal user → limited mentions
+Admin = zyada mentions
 """,
 
     "random": """
 🎲 RANDOM – FUN COMMANDS
 
 .predict
-→ Yes / No type answer
-
 .8ball
-→ Magic 8 ball
-
 .truth / .dare
-→ Fun questions
-
 .joke / .quote
-→ Random joke / quote
-
 .insult / .compliment
-→ User ke sath fun
 """,
 
     "games": """
 🎮 GAMES – MINI FUN
 
 .dice
-→ Dice roll (1–6)
-
 .coin
-→ Head / Tail
-
 .luck
-→ Luck percentage
-
 .rate
-→ Random rating
-
 .roll 100
-→ 1 se 100 ke beech number
 """,
 
     "basic": """
 ⚙️ BASIC COMMANDS
 
 .alive
-→ Bot zinda hai ya nahi
-
 .ping
-→ Response test
-
 .restart
-→ Userbot restart
-
 .id
-→ User / chat ID
-
 .stats
-→ Profile stats + uptime
 """
 }
 
@@ -306,7 +276,7 @@ async def explain_cmd(client: Client, m):
 
         if len(m.command) < 2:
             msg = await m.reply(
-                "Usage:\n.explain autoreply\n.explain spam\n.explain vars\n.explain botmanager"
+                "Usage:\n.explain autoreply\n.explain spambot\n.explain vars"
             )
             return await auto_delete(msg, 8)
 

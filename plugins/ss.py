@@ -1,10 +1,30 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import log_error, mark_plugin_loaded, auto_delete
+from plugins.utils import (
+    log_error,
+    mark_plugin_loaded,
+    mark_plugin_error,   # 🔥 auto heal
+    auto_delete,
+    register_help        # 🔥 help4 auto-generate
+)
 from datetime import datetime
 import os, uuid
 
+# 🔥 health system
 mark_plugin_loaded("ss.py")
+
+# 🔥 help4 registry
+register_help(
+    "media",
+    """
+.ss
+exm: (reply to view-once media) .ss
+
+• Saves self-destruct / view-once media
+• Media is forwarded to Saved Messages
+• Local file auto-deletes
+"""
+)
 
 # 🔔 Saved Messages
 TARGET_CHAT = "me"
@@ -92,4 +112,6 @@ async def ss_handler(client: Client, m):
         await auto_delete(msg, 5)
 
     except Exception as e:
+        # 🔥 auto-heal + log
+        mark_plugin_error("ss.py", e)
         await log_error(client, "ss.py", e)

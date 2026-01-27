@@ -13,6 +13,18 @@ ERROR_CHAT = "me"
 # PLUGIN HEALTH STORAGE
 # =====================
 PLUGIN_STATUS = {}
+DISABLED_PLUGINS = set()   # 🔥 auto-heal ke liye
+
+"""
+PLUGIN_STATUS format:
+{
+  "plugin.py": {
+      "loaded": True,
+      "last_error": "error text or None",
+      "last_error_time": "time or None"
+  }
+}
+"""
 
 # =====================
 # HEALTH HELPERS
@@ -23,6 +35,9 @@ def mark_plugin_loaded(plugin: str):
         "last_error": None,
         "last_error_time": None
     }
+    # agar plugin dobara load hua → auto heal
+    DISABLED_PLUGINS.discard(plugin)
+
 
 def mark_plugin_error(plugin: str, error: Exception):
     if plugin not in PLUGIN_STATUS:
@@ -32,6 +47,14 @@ def mark_plugin_error(plugin: str, error: Exception):
     PLUGIN_STATUS[plugin]["last_error_time"] = datetime.now().strftime(
         "%d %b %Y %I:%M %p"
     )
+
+    # 🔥 AUTO HEAL (disable faulty plugin)
+    DISABLED_PLUGINS.add(plugin)
+
+
+def is_plugin_disabled(plugin: str) -> bool:
+    return plugin in DISABLED_PLUGINS
+
 
 def get_plugin_health():
     return PLUGIN_STATUS
@@ -147,3 +170,19 @@ def del_var(key: str):
 
 def all_vars():
     return _VARS
+
+
+# =====================
+# HELP AUTO GENERATION (BASE)
+# =====================
+HELP_REGISTRY = {}
+
+def register_help(plugin: str, text: str):
+    """
+    Plugin ke andar call karo:
+    register_help("mention", "...commands...")
+    """
+    HELP_REGISTRY[plugin] = text
+
+def get_all_help():
+    return HELP_REGISTRY

@@ -1,241 +1,199 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import auto_delete, get_plugin_health, log_error, mark_plugin_loaded
+from plugins.utils import (
+    auto_delete,
+    get_plugin_health,
+    mark_plugin_loaded,
+    log_error
+)
 
 mark_plugin_loaded("help.py")
 
 # =====================
-# SHORT HELP (.help)
+# MAIN HELP (SHORT)
 # =====================
-HELP_SHORT = """
+HELP_MAIN = """
 USERBOT HELP
 
 Use:
-.help all
+.help (plugin)
 
 Available plugins:
 basic
 cleanup
 spam
 forward
+notes
 media
 games
 fun
 random
-auto
 mention
-vars
 info
-"""
 
-# =====================
-# FULL HELP (.help all)
-# =====================
-HELP_FULL = """
-====================
-BASIC
-====================
-.alive | exm: .alive
-Check if userbot is running
-
-.ping | exm: .ping
-Check response speed
-
-.restart | exm: .restart
-Restart the userbot
-
-====================
-CLEANUP
-====================
-.purge | exm: .purge (reply)
-Delete messages from replied msg to command
-
-.clean | exm: .clean (count)
-Delete last X messages
-
-.del | exm: .del (reply)
-Delete single message
-
-.delall | exm: .delall (reply user)
-Delete all messages of a user
-
-====================
-SPAM
-====================
-.spam | exm: .spam (count) (text)
-Send same message multiple times
-
-.delayspam | exm: .delayspam (count) (delay) (text)
-Spam with delay between messages
-
-.replyspam | exm: .replyspam (count)
-Spam reply to a message
-
-====================
-FORWARD
-====================
-.fwd | exm: .fwd (chat_id)
-Forward replied message
-
-.sfwd | exm: .sfwd (chat_id)
-Silent forward
-
-.fwdhere | exm: .fwdhere (reply)
-Forward message to same chat
-
-.mfwd | exm: .mfwd (chat_id) (count)
-Forward multiple messages
-
-====================
-MEDIA
-====================
-.ss | exm: .ss (reply view-once)
-Save view-once media
-
-.save | exm: .save (reply media)
-Save media to Saved Messages
-
-====================
-GAMES
-====================
-.dice  → Roll dice
-.coin  → Head / Tail
-.luck  → Luck percentage
-.rate  → Rate yourself
-.roll  → Random number
-
-====================
-FUN
-====================
-.slap | exm: .slap (reply / mention)
-Send slap reaction
-
-.hug | exm: .hug (reply / mention)
-Send hug reaction
-
-.kiss | exm: .kiss (reply / mention)
-Send kiss reaction
-
-.poke | exm: .poke (reply / mention)
-Poke someone
-
-.tickle | exm: .tickle (reply / mention)
-Tickle reaction
-
-====================
-RANDOM
-====================
-.predict | exm: .predict
-Predict something randomly
-
-.8ball | exm: .8ball
-Magic 8-ball answers
-
-.truth | exm: .truth
-Truth question
-
-.dare | exm: .dare
-Dare challenge
-
-.joke | exm: .joke
-Random joke
-
-.quote | exm: .quote
-Random quote
-
-.insult | exm: .insult (user)
-Insult someone (fun)
-
-.compliment | exm: .compliment (user)
-Compliment someone
-
-====================
-AUTO REPLY
-====================
-.autoreply on/off
-Enable or disable auto reply
-
-.autoreplydelay (seconds)
-Set reply delay
-
-.setmorning (text)
-.setafternoon (text)
-.setevening (text)
-.setnight (text)
-
-.awhitelist | exm: (reply)
-Allow auto reply to user
-
-.ablacklist | exm: (reply)
-Block auto reply for user
-
-====================
-VARS
-====================
-.setvar | exm: .setvar KEY VALUE
-Save variable
-
-.getvar | exm: .getvar KEY
-Get variable
-
-.delvar | exm: .delvar KEY
-Delete variable
-
-.vars
-List all variables
-
-====================
-INFO
-====================
-.id
-Get IDs
-
-.stats
-Account statistics
-
-====================
-EXTRA
-====================
+Extra:
+.help all
 .help broken
-Show broken plugins
+.help2
+.help3
 """
 
 # =====================
-# HELP HANDLER
+# FULL HELP DATA
+# =====================
+HELP_PLUGINS = {
+
+"basic": """
+Basic Commands
+.alive  | exm: .alive
+.ping   | exm: .ping
+.restart| exm: .restart
+""",
+
+"cleanup": """
+Cleanup
+.purge     | exm: .purge (reply)
+.clean     | exm: .clean 10
+.del       | exm: .del (reply)
+.delall    | exm: .delall (reply user)
+""",
+
+"spam": """
+Spam
+.spam        | exm: .spam 5 hello
+.delayspam  | exm: .delayspam 5 1.5 hi
+.replyspam  | exm: .replyspam 10 (reply)
+""",
+
+"forward": """
+Forward
+.fwd        | exm: .fwd -100123456
+.sfwd       | exm: .sfwd -100123456
+.fwdhere    | exm: .fwdhere (reply)
+.mfwd       | exm: .mfwd -100123456 5
+""",
+
+"notes": """
+Notes
+.setnote    | exm: .setnote test hello
+.getnote    | exm: .getnote test
+.delnote    | exm: .delnote test
+""",
+
+"media": """
+Media
+.ss     | exm: .ss (reply view-once)
+.save   | exm: .save (reply)
+""",
+
+"games": """
+Games
+.dice   | Roll dice (1–6)
+.coin   | Head / Tail
+.luck   | Luck percentage
+.rate   | Rate something
+.roll   | exm: .roll 100
+""",
+
+"fun": """
+Fun Actions
+.slap   | Slap someone (reply / mention)
+.hug    | Hug someone
+.kiss   | Kiss someone
+.poke   | Poke someone
+.tickle| Tickle someone
+""",
+
+"random": """
+Random Fun
+.predict     | Yes / No prediction
+.8ball       | Magic 8 ball
+.truth       | Truth question
+.dare        | Dare challenge
+.joke        | Random joke
+.quote       | Random quote
+.insult      | Insult user
+.compliment  | Compliment user
+""",
+
+"mention": """
+Mention
+.mention | exm: .mention Hello everyone
+
+• Mentions recent chat users
+• Admin = more mentions
+""",
+
+"info": """
+Info
+.id     | Get user / chat ID
+.stats  | Profile stats
+"""
+}
+
+# =====================
+# HELP COMMAND
 # =====================
 @Client.on_message(owner_only & filters.command("help", "."))
 async def help_cmd(client, m):
     try:
-        await m.delete()
+        try:
+            await m.delete()
+        except:
+            pass
 
+        # .help
         if len(m.command) == 1:
-            msg = await m.reply(HELP_SHORT)
-            await auto_delete(msg, 30)
+            msg = await m.reply(HELP_MAIN)
+            await auto_delete(msg, 40)
             return
 
         arg = m.command[1].lower()
 
+        # .help all
         if arg == "all":
-            msg = await m.reply(HELP_FULL)
-            await auto_delete(msg, 90)
+            text = "ALL COMMANDS\n\n"
+            for name, section in HELP_PLUGINS.items():
+                text += (
+                    "====================\n"
+                    f"{name.upper()}\n"
+                    "====================\n"
+                    f"{section.strip()}\n\n"
+                )
+
+            msg = await m.reply(text)
+            await auto_delete(msg, 40)
             return
 
+        # .help broken
         if arg == "broken":
             health = get_plugin_health()
             broken = []
 
-            for p, info in health.items():
+            for plugin, info in health.items():
                 if info.get("last_error"):
                     broken.append(
-                        f"{p}\nError: {info['last_error']}\nTime: {info['last_error_time']}"
+                        f"{plugin}\n"
+                        f"Error: {info['last_error']}\n"
+                        f"Time: {info['last_error_time']}\n"
                     )
 
-            msg = await m.reply(
-                "All plugins working ✅"
-                if not broken else
-                "BROKEN PLUGINS\n\n" + "\n\n".join(broken)
-            )
-            await auto_delete(msg, 20)
+            if not broken:
+                msg = await m.reply("✅ All plugins are working fine")
+            else:
+                msg = await m.reply("🚨 BROKEN PLUGINS\n\n" + "\n".join(broken))
+
+            await auto_delete(msg, 15)
+            return
+
+        # .help <plugin>
+        text = HELP_PLUGINS.get(arg)
+        if not text:
+            msg = await m.reply("Unknown help section ❌")
+        else:
+            msg = await m.reply(text)
+
+        await auto_delete(msg, 40)
 
     except Exception as e:
         await log_error(client, "help.py", e)

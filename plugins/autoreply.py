@@ -4,6 +4,7 @@ from plugins.utils import (
     auto_delete,
     log_error,
     mark_plugin_loaded,
+    mark_plugin_error,
     set_var,
     get_var
 )
@@ -40,7 +41,7 @@ def get_delay():
         return 0
 
 def get_time_based_text():
-    # 🇮🇳 IST time
+    # 🇮🇳 IST time (FIXED & SAFE)
     ist_time = datetime.utcnow() + timedelta(hours=5, minutes=30)
     hour = ist_time.hour
 
@@ -71,6 +72,9 @@ async def auto_reply_handler(client: Client, m):
         if not is_enabled():
             return
 
+        if not m.from_user:
+            return
+
         user_id = m.from_user.id
 
         blacklist = get_list("AUTOREPLY_BLACKLIST")
@@ -98,6 +102,7 @@ async def auto_reply_handler(client: Client, m):
         LAST_REPLY[user_id] = sent.id
 
     except Exception as e:
+        mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
 
 # =====================
@@ -129,14 +134,16 @@ async def autoreply_toggle(client: Client, m):
         await auto_delete(msg, 4)
 
     except Exception as e:
+        mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
 
 # =====================
 # SET TIME BASED TEXTS
 # =====================
-@Client.on_message(owner_only & filters.command(
-    ["setmorning", "setafternoon", "setevening", "setnight"], "."
-))
+@Client.on_message(
+    owner_only &
+    filters.command(["setmorning", "setafternoon", "setevening", "setnight"], ".")
+)
 async def set_time_text(client: Client, m):
     try:
         await m.delete()
@@ -168,6 +175,7 @@ async def set_time_text(client: Client, m):
         await auto_delete(msg, 4)
 
     except Exception as e:
+        mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
 
 # =====================
@@ -195,17 +203,23 @@ async def set_delay_cmd(client: Client, m):
         await auto_delete(msg, 4)
 
     except Exception as e:
+        mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
 
 # =====================
 # WHITELIST / BLACKLIST
 # =====================
-@Client.on_message(owner_only & filters.command(
-    ["awhitelist", "ablacklist"], ".") & filters.reply
+@Client.on_message(
+    owner_only &
+    filters.command(["awhitelist", "ablacklist"], ".") &
+    filters.reply
 )
 async def list_add(client: Client, m):
     try:
         await m.delete()
+
+        if not m.reply_to_message or not m.reply_to_message.from_user:
+            return
 
         user_id = m.reply_to_message.from_user.id
         key = (
@@ -226,14 +240,20 @@ async def list_add(client: Client, m):
         await auto_delete(msg, 4)
 
     except Exception as e:
+        mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)
 
-@Client.on_message(owner_only & filters.command(
-    ["awhitelistdel", "ablacklistdel"], ".") & filters.reply
+@Client.on_message(
+    owner_only &
+    filters.command(["awhitelistdel", "ablacklistdel"], ".") &
+    filters.reply
 )
 async def list_remove(client: Client, m):
     try:
         await m.delete()
+
+        if not m.reply_to_message or not m.reply_to_message.from_user:
+            return
 
         user_id = m.reply_to_message.from_user.id
         key = (
@@ -254,4 +274,5 @@ async def list_remove(client: Client, m):
         await auto_delete(msg, 4)
 
     except Exception as e:
+        mark_plugin_error("autoreply.py", e)
         await log_error(client, "autoreply.py", e)

@@ -4,11 +4,41 @@ from plugins.utils import (
     set_var, get_var, del_var,
     start_bot, stop_bot, list_running_bots,
     auto_delete, log_error,
-    mark_plugin_loaded, mark_plugin_error
+    mark_plugin_loaded, mark_plugin_error,
+    register_help        # 🔥 AUTO HELP
 )
 from config import API_ID, API_HASH
 
+# =====================
+# PLUGIN LOAD
+# =====================
 mark_plugin_loaded("botmanager.py")
+
+# =====================
+# AUTO HELP REGISTER
+# =====================
+register_help(
+    "botmanager",
+    """
+.addbot <name> <token>
+Add a new bot
+
+.startbot <name>
+Start a bot
+
+.stopbot <name>
+Stop a running bot
+
+.delbot <name>
+Delete bot token
+
+.bots
+List running bots
+
+• Multi-bot manager
+• Safe start / stop
+"""
+)
 
 # =====================
 # ADD BOT

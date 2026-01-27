@@ -1,7 +1,14 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import auto_delete, log_error
+from plugins.utils import (
+    auto_delete,
+    log_error,
+    mark_plugin_loaded,
+    mark_plugin_error
+)
 import random
+
+mark_plugin_loaded("fun.py")
 
 # ======================
 # ACTION DATA
@@ -80,7 +87,6 @@ async def fun_handler(client: Client, m):
         if not data:
             return
 
-        # delete command safely
         try:
             await m.delete()
         except:
@@ -90,13 +96,13 @@ async def fun_handler(client: Client, m):
         target = actor
         reply_to = None
 
-        # 🔁 reply based
+        # reply based target
         if m.reply_to_message and m.reply_to_message.from_user:
             target_user = m.reply_to_message.from_user
             target = target_user.mention
             reply_to = m.reply_to_message.id
 
-        # 🔖 mention based
+        # mention based target
         elif m.entities:
             for ent in m.entities:
                 if ent.type in ("mention", "text_mention"):
@@ -108,13 +114,11 @@ async def fun_handler(client: Client, m):
                         target = user.mention
                     break
 
-        # 🎲 pick text
         text = random.choice(data["texts"]).format(
             actor=actor,
             target=target
         )
 
-        # 🎬 gif or text randomly
         if data["gifs"] and random.choice([True, False]):
             sent = await client.send_animation(
                 m.chat.id,
@@ -132,4 +136,5 @@ async def fun_handler(client: Client, m):
         await auto_delete(sent, 6)
 
     except Exception as e:
+        mark_plugin_error("fun.py", e)
         await log_error(client, "fun.py", e)

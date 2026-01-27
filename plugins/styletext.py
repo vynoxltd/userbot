@@ -1,91 +1,51 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import auto_delete, log_error, mark_plugin_loaded
-
-mark_plugin_loaded("styletext.py")
 
 # =====================
 # STYLE FUNCTIONS
 # =====================
 
-def fancy(text):
+def bold(text):
     normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    fancy_ = "𝒶𝒷𝒸𝒹𝑒𝒻𝓰𝒽𝒾𝒿𝓀𝓁𝓂𝓃𝑜𝓅𝓆𝓇𝓈𝓉𝓊𝓋𝓌𝓍𝓎𝓏𝒜𝐵𝒞𝒟𝐸𝐹𝒢𝐻𝐼𝒥𝒦𝐿𝑀𝒩𝒪𝒫𝒬𝑅𝒮𝒯𝒰𝒱𝒲𝒳𝒴𝒵"
-    table = str.maketrans(normal, fancy_)
-    return text.translate(table)
+    bold_ = "𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭"
+    return text.translate(str.maketrans(normal, bold_))
 
-def bubble(text):
+
+def italic(text):
     normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    bubble_ = "ⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ"
-    table = str.maketrans(normal, bubble_)
-    return text.translate(table)
+    italic_ = "𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡"
+    return text.translate(str.maketrans(normal, italic_))
+
 
 def square(text):
     normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    square_ = "🄰🄱🄲🄳🄴🄵🄶🄷🄸🄹🄺🄻🄼🄽🄾🄿🅀🅁🅂🅃🅄🅅🅆🅇🅈🅉" * 2
-    table = dict(zip(normal, square_))
-    return "".join(table.get(c, c) for c in text)
-
-def flip(text):
-    normal = "abcdefghijklmnopqrstuvwxyz"
-    flipped = "ɐqɔpǝɟɓɥᴉɾʞʃɯuodbɹsʇnʌʍxʎz"
-    table = str.maketrans(normal, flipped)
-    return text.lower().translate(table)[::-1]
-
-def emoji(text):
-    return " ".join(f"{c}️⃣" for c in text if c.isalnum())
-
-def space(text):
-    return " ".join(list(text))
+    square_ = (
+        "🄰🄱🄲🄳🄴🄵🄶🄷🄸🄹🄺🄻🄼🄽🄾🄿🅀🅁🅂🅃🅄🅅🅆🅇🅈🅉"
+        "🄰🄱🄲🄳🄴🄵🄶🄷🄸🄹🄺🄻🄼🄽🄾🄿🅀🅁🅂🅃🅄🅅🅆🅇🅈🅉"
+    )
+    return text.translate(str.maketrans(normal, square_))
 
 
 # =====================
-# COMMAND → FUNCTION MAP
+# COMMANDS
 # =====================
-STYLES = {
-    "fancy": fancy,
-    "bubble": bubble,
-    "square": square,
-    "flip": flip,
-    "emoji": emoji,
-    "space": space,
-}
 
-# =====================
-# STYLE HANDLER
-# =====================
-@Client.on_message(owner_only & filters.command(list(STYLES.keys()), "."))
-async def style_handler(client: Client, m):
-    try:
-        if len(m.command) < 2:
-            msg = await client.send_message(
-                m.chat.id,
-                (
-                    "❌ Usage:\n\n"
-                    ".fancy text\n"
-                    ".bubble text\n"
-                    ".square text\n"
-                    ".flip text\n"
-                    ".emoji text\n"
-                    ".space text"
-                )
-            )
-            await auto_delete(msg, 6)
-            return
+@Client.on_message(owner_only & filters.command("bold", "."))
+async def bold_cmd(_, m):
+    if len(m.command) < 2:
+        return
+    await m.reply_text(bold(m.text.split(None, 1)[1]))
 
-        cmd = m.command[0].lower()
-        text = m.text.split(None, 1)[1]
 
-        result = STYLES[cmd](text)
+@Client.on_message(owner_only & filters.command("italic", "."))
+async def italic_cmd(_, m):
+    if len(m.command) < 2:
+        return
+    await m.reply_text(italic(m.text.split(None, 1)[1]))
 
-        sent = await client.send_message(m.chat.id, result)
 
-        try:
-            await m.delete()
-        except:
-            pass
-
-        await auto_delete(sent, 40)
-
-    except Exception as e:
-        await log_error(client, "styletext.py", e)
+@Client.on_message(owner_only & filters.command("square", "."))
+async def square_cmd(_, m):
+    if len(m.command) < 2:
+        return
+    await m.reply_text(square(m.text.split(None, 1)[1]))

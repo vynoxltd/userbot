@@ -13,30 +13,43 @@ VARIABLES (VARS)
 ====================
 
 .setvar <KEY> <VALUE>
-exm: .setvar SPAM_BOT_TOKEN 123456:ABC
+exm: .setvar API_KEY 12345
 
 .getvar <KEY>
-exm: .getvar SPAM_BOT_TOKEN
+exm: .getvar API_KEY
 
 .delvar <KEY>
-exm: .delvar SPAM_BOT_TOKEN
+exm: .delvar API_KEY
 
 .vars
 exm: .vars
+
+• Vars are stored in data/vars.json
+• Used by plugins (not botmanager)
 
 
 ====================
 BOT MANAGER (MULTI BOT)
 ====================
 
-.startbot <name> <VAR_KEY>
-exm: .startbot spam SPAM_BOT_TOKEN
+.addbot <name> <token>
+exm: .addbot spam 123456:ABCDEF
+
+.startbot <name>
+exm: .startbot spam
 
 .stopbot <name>
 exm: .stopbot spam
 
+.delbot <name>
+exm: .delbot spam
+
 .bots
 exm: .bots
+
+• Tokens are saved automatically
+• No VAR_KEY required
+• BOT_<NAME> handled internally
 
 
 ====================
@@ -51,7 +64,18 @@ NEKO FUN COMMANDS
 
 • Reply / without reply — both work
 • Media auto deletes after 30 seconds
-• Files picked randomly from assets folder
+• Files picked randomly
+
+
+====================
+PLUGIN HEALTH
+====================
+
+.help broken
+
+• Shows failed plugins
+• Error + time shown
+• Useful if botmanager / neko fails
 
 
 ====================
@@ -59,13 +83,10 @@ NOTES
 ====================
 
 • All commands are owner-only
-• Vars are stored in data/vars.json
-• Key ≠ Bot name
-• Bot name = running bot label
+• Botmanager ≠ Vars system
+• Bot name = runtime label
+• Restart heals disabled plugins
 
-Example flow:
-.setvar SPAM_BOT_TOKEN <token>
-.startbot spam SPAM_BOT_TOKEN
 """
 
 @Client.on_message(owner_only & filters.command("help3", "."))

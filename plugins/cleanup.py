@@ -1,8 +1,42 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import auto_delete, log_error
+from plugins.utils import (
+    auto_delete,
+    log_error,
+    mark_plugin_loaded,
+    mark_plugin_error,
+    register_help          # 🔥 AUTO HELP
+)
 import asyncio
 
+# =====================
+# PLUGIN LOAD
+# =====================
+mark_plugin_loaded("cleanup.py")
+
+# =====================
+# AUTO HELP REGISTER
+# =====================
+register_help(
+    "cleanup",
+    """
+.purge (reply)
+Delete messages between replied msg and command
+
+.clean <count>
+Delete last messages (admin = all, user = own)
+
+.del (reply)
+Delete single message
+
+.delall (reply user)
+Delete all messages of a user
+
+• Admin = full power
+• User = only own messages
+• Flood-safe batch delete
+"""
+)
 
 # =====================
 # HELPER: CHECK ADMIN
@@ -24,16 +58,14 @@ async def purge_handler(client: Client, m):
         chat_id = m.chat.id
         user_id = m.from_user.id
         start_id = m.reply_to_message.id
-        end_id = m.id - 1  # command ke niche tak
+        end_id = m.id - 1
 
-        # delete command first
         await m.delete()
 
         if start_id > end_id:
             return
 
         admin = await is_admin(client, chat_id, user_id)
-
         msg_ids = []
 
         async for msg in client.get_chat_history(
@@ -44,14 +76,12 @@ async def purge_handler(client: Client, m):
             if msg.id < start_id:
                 break
 
-            # non-admin → sirf apne msg
-            if not admin:
+            if admin:
+                msg_ids.append(msg.id)
+            else:
                 if msg.from_user and msg.from_user.id == user_id:
                     msg_ids.append(msg.id)
-            else:
-                msg_ids.append(msg.id)
 
-        # batch delete (flood safe)
         for i in range(0, len(msg_ids), 100):
             await client.delete_messages(chat_id, msg_ids[i:i + 100])
             await asyncio.sleep(0.5)
@@ -60,6 +90,7 @@ async def purge_handler(client: Client, m):
         await auto_delete(done, 3)
 
     except Exception as e:
+        mark_plugin_error("cleanup.py", e)
         await log_error(client, "cleanup.py", e)
 
 
@@ -84,11 +115,11 @@ async def clean_handler(client: Client, m):
         msg_ids = []
 
         async for msg in client.get_chat_history(chat_id, limit=count):
-            if not admin:
+            if admin:
+                msg_ids.append(msg.id)
+            else:
                 if msg.from_user and msg.from_user.id == user_id:
                     msg_ids.append(msg.id)
-            else:
-                msg_ids.append(msg.id)
 
         for i in range(0, len(msg_ids), 100):
             await client.delete_messages(chat_id, msg_ids[i:i + 100])
@@ -101,6 +132,7 @@ async def clean_handler(client: Client, m):
         await auto_delete(done, 3)
 
     except Exception as e:
+        mark_plugin_error("cleanup.py", e)
         await log_error(client, "cleanup.py", e)
 
 
@@ -118,7 +150,6 @@ async def del_single(client: Client, m):
 
         admin = await is_admin(client, chat_id, user_id)
 
-        # non-admin → sirf apna msg
         if not admin:
             if not target_msg.from_user or target_msg.from_user.id != user_id:
                 return
@@ -126,6 +157,7 @@ async def del_single(client: Client, m):
         await client.delete_messages(chat_id, target_msg.id)
 
     except Exception as e:
+        mark_plugin_error("cleanup.py", e)
         await log_error(client, "cleanup.py", e)
 
 
@@ -146,7 +178,6 @@ async def del_all(client: Client, m):
 
         admin = await is_admin(client, chat_id, user_id)
 
-        # non-admin → sirf apne liye allowed
         if not admin and target.id != user_id:
             return
 
@@ -167,4 +198,5 @@ async def del_all(client: Client, m):
         await auto_delete(done, 3)
 
     except Exception as e:
+        mark_plugin_error("cleanup.py", e)
         await log_error(client, "cleanup.py", e)

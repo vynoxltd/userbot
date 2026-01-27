@@ -25,11 +25,10 @@ spam
 forward
 notes
 media
-autoreply
 games
 fun
 random
-auto
+autoreply
 mention
 info
 
@@ -118,7 +117,8 @@ Random Fun
 .compliment  | Compliment user
 """,
 
-"auto": """
+# 🔥 MAIN KEY = autoreply
+"autoreply": """
 Auto Reply
 .autoreply on        | Enable auto reply
 .autoreply off       | Disable auto reply
@@ -173,6 +173,11 @@ async def help_cmd(client, m):
             return
 
         arg = m.command[1].lower()
+
+        # 🔥 ALIAS FIX
+        # .help auto  →  .help autoreply
+        if arg == "auto":
+            arg = "autoreply"
 
         # .help all
         if arg == "all":

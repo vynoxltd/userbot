@@ -1,11 +1,11 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import auto_delete, log_error, mark_plugin_loaded
+from plugins.utils import log_error, mark_plugin_loaded
 
 mark_plugin_loaded("styletext.py")
 
 # =====================
-# STYLE FUNCTIONS
+# STYLE MAP (UNICODE)
 # =====================
 
 def bold(text):
@@ -16,7 +16,7 @@ def bold(text):
 
 def italic(text):
     normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    italic_ = "𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡"
+    italic_ = "𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻𝘐𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡"
     return text.translate(str.maketrans(normal, italic_))
 
 
@@ -29,13 +29,15 @@ def square(text):
     return text.translate(str.maketrans(normal, square_))
 
 
-# =====================
-# STYLE MAP
-# =====================
+def space(text):
+    return " ".join(list(text))
+
+
 STYLES = {
     "bold": bold,
     "italic": italic,
     "square": square,
+    "space": space,
 }
 
 # =====================
@@ -45,26 +47,21 @@ STYLES = {
 async def style_handler(client: Client, m):
     try:
         if len(m.command) < 2:
-            msg = await client.send_message(
-                m.chat.id,
-                "❌ Usage:\n.bold text\n.italic text\n.square text"
+            await m.reply_text(
+                "Usage:\n"
+                ".bold text\n"
+                ".italic text\n"
+                ".square text\n"
+                ".space text"
             )
-            await auto_delete(msg, 5)
             return
 
         cmd = m.command[0].lower()
         text = m.text.split(None, 1)[1]
 
-        result = STYLES[cmd](text)
+        styled = STYLES[cmd](text)
 
-        sent = await client.send_message(m.chat.id, result)
-
-        try:
-            await m.delete()
-        except:
-            pass
-
-        await auto_delete(sent, 40)
+        await m.reply_text(styled)
 
     except Exception as e:
         await log_error(client, "styletext.py", e)

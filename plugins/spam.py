@@ -1,20 +1,44 @@
 from pyrogram import Client, filters
 from plugins.owner import owner_only
-from plugins.utils import log_error
+from plugins.utils import (
+    log_error,
+    mark_plugin_loaded,
+    mark_plugin_error,
+    register_help,          # 🔥 help4 auto-generate
+    auto_delete
+)
 import asyncio
-from plugins.utils import mark_plugin_loaded
+
+# 🔥 health system
 mark_plugin_loaded("spam.py")
 
+# 🔥 help4 auto registry
+register_help(
+    "spam",
+    """
+.spam <count> <text>
+exm: .spam 5 hello
+
+.delayspam <count> <delay> <text>
+exm: .delayspam 5 1.5 hello
+
+.replyspam <count>
+exm: (reply) .replyspam 10
+
+• All commands are owner-only
+• Flood-safe delay applied
+"""
+)
+
 # =====================
-# 16️⃣ SPAM
+# SPAM
 # =====================
 @Client.on_message(owner_only & filters.command("spam", "."))
 async def spam(client: Client, m):
     try:
         if len(m.command) < 3 or not m.command[1].isdigit():
             err = await m.reply("Usage: `.spam <count> <text>`")
-            await asyncio.sleep(3)
-            await err.delete()
+            await auto_delete(err, 3)
             return
 
         count = int(m.command[1])
@@ -27,19 +51,22 @@ async def spam(client: Client, m):
             await asyncio.sleep(0.4)
 
     except Exception as e:
+        mark_plugin_error("spam.py", e)
         await log_error(client, "spam.py", e)
 
 
 # =====================
-# 18️⃣ DELAYSPAM
+# DELAY SPAM
 # =====================
 @Client.on_message(owner_only & filters.command("delayspam", "."))
 async def delayspam(client: Client, m):
     try:
-        if len(m.command) < 4 or not m.command[1].isdigit():
+        if (
+            len(m.command) < 4 or
+            not m.command[1].isdigit()
+        ):
             err = await m.reply("Usage: `.delayspam <count> <delay> <text>`")
-            await asyncio.sleep(3)
-            await err.delete()
+            await auto_delete(err, 3)
             return
 
         count = int(m.command[1])
@@ -53,11 +80,12 @@ async def delayspam(client: Client, m):
             await asyncio.sleep(delay)
 
     except Exception as e:
+        mark_plugin_error("spam.py", e)
         await log_error(client, "spam.py", e)
 
 
 # =====================
-# 20️⃣ REPLYSPAM
+# REPLY SPAM
 # =====================
 @Client.on_message(
     owner_only &
@@ -68,8 +96,7 @@ async def replyspam(client: Client, m):
     try:
         if len(m.command) < 2 or not m.command[1].isdigit():
             err = await m.reply("Usage: `.replyspam <count>` (reply required)")
-            await asyncio.sleep(3)
-            await err.delete()
+            await auto_delete(err, 3)
             return
 
         count = int(m.command[1])
@@ -82,4 +109,5 @@ async def replyspam(client: Client, m):
             await asyncio.sleep(0.4)
 
     except Exception as e:
+        mark_plugin_error("spam.py", e)
         await log_error(client, "spam.py", e)

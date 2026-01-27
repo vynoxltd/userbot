@@ -4,15 +4,31 @@ from plugins.utils import (
     get_plugin_health,
     auto_delete,
     mark_plugin_loaded,
-    log_error
+    mark_plugin_error,
+    log_error,
+    register_help
 )
 
 # 🔥 mark this plugin as loaded
 mark_plugin_loaded("pluginhealth.py")
 
+# 🔥 auto help registration (help4.py)
+register_help(
+    "pluginhealth",
+    """
+.plugins
+exm: .plugins
+
+• Shows health status of all plugins
+• ❌ = plugin has error
+• ✅ = plugin working fine
+• Shows last error + time if failed
+"""
+)
+
 
 @Client.on_message(owner_only & filters.command("plugins", "."))
-async def plugin_health_cmd(client, m):
+async def plugin_health_cmd(client: Client, m):
     try:
         data = get_plugin_health()
 
@@ -43,4 +59,5 @@ async def plugin_health_cmd(client, m):
             pass
 
     except Exception as e:
+        mark_plugin_error("pluginhealth.py", e)
         await log_error(client, "pluginhealth.py", e)

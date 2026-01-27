@@ -1,6 +1,11 @@
 from pyrogram import Client, filters
 import asyncio
-from plugins.utils import mark_plugin_loaded, register_help
+from plugins.utils import (
+    mark_plugin_loaded,
+    register_help,
+    mark_plugin_error,
+    log_error
+)
 
 mark_plugin_loaded("spambot.py")
 
@@ -70,81 +75,86 @@ async def auto_delete(msg):
 async def spambot_handler(client: Client, m):
     global SPAM_ENABLED, SPAM_RUNNING, STOP_FLAG
 
-    # delete command
     try:
-        await m.delete()
-    except:
-        pass
+        # delete command
+        try:
+            await m.delete()
+        except:
+            pass
 
-    # -----------------
-    # ON / OFF
-    # -----------------
-    if len(m.command) == 2 and m.command[1] in ("on", "off"):
-        SPAM_ENABLED = m.command[1] == "on"
-        txt = "ENABLED ✅" if SPAM_ENABLED else "DISABLED ❌"
-        msg = await client.send_message(m.chat.id, f"🤖 SpamBot {txt}")
-        await asyncio.sleep(4)
-        await msg.delete()
-        return
+        # -----------------
+        # ON / OFF
+        # -----------------
+        if len(m.command) == 2 and m.command[1] in ("on", "off"):
+            SPAM_ENABLED = m.command[1] == "on"
+            txt = "ENABLED ✅" if SPAM_ENABLED else "DISABLED ❌"
+            msg = await client.send_message(m.chat.id, f"🤖 SpamBot {txt}")
+            await asyncio.sleep(4)
+            await msg.delete()
+            return
 
-    # -----------------
-    # STOP
-    # -----------------
-    if len(m.command) == 2 and m.command[1] == "stop":
-        STOP_FLAG = True
-        return
+        # -----------------
+        # STOP
+        # -----------------
+        if len(m.command) == 2 and m.command[1] == "stop":
+            STOP_FLAG = True
+            return
 
-    if not SPAM_ENABLED or SPAM_RUNNING:
-        return
+        if not SPAM_ENABLED or SPAM_RUNNING:
+            return
 
-    # -----------------
-    # COUNT CHECK
-    # -----------------
-    if len(m.command) < 2 or not m.command[1].isdigit():
-        return
+        # -----------------
+        # COUNT CHECK
+        # -----------------
+        if len(m.command) < 2 or not m.command[1].isdigit():
+            return
 
-    count = int(m.command[1])
-    if count <= 0 or count > 200:
-        return
+        count = int(m.command[1])
+        if count <= 0 or count > 200:
+            return
 
-    # -----------------
-    # TARGET CHAT
-    # -----------------
-    if len(m.command) >= 3:
-        target = m.command[2]
-        if target.startswith("@"):
-            target_chat = target
-        else:
-            try:
-                target_chat = int(target)
-            except:
-                return
-    else:
-        target_chat = m.chat.id
-
-    reply_msg = m.reply_to_message
-
-    # =====================
-    # START SPAM
-    # =====================
-    SPAM_RUNNING = True
-    STOP_FLAG = False
-
-    try:
-        for i in range(count):
-            if STOP_FLAG:
-                break
-
-            text = SPAM_TEXTS[i % len(SPAM_TEXTS)]
-
-            if reply_msg:
-                sent = await reply_msg.reply(text)
+        # -----------------
+        # TARGET CHAT
+        # -----------------
+        if len(m.command) >= 3:
+            target = m.command[2]
+            if target.startswith("@"):
+                target_chat = target
             else:
-                sent = await client.send_message(target_chat, text)
+                try:
+                    target_chat = int(target)
+                except:
+                    return
+        else:
+            target_chat = m.chat.id
 
-            asyncio.create_task(auto_delete(sent))
-            await asyncio.sleep(SPAM_DELAY)
+        reply_msg = m.reply_to_message
 
-    finally:
-        SPAM_RUNNING = False
+        # =====================
+        # START SPAM
+        # =====================
+        SPAM_RUNNING = True
         STOP_FLAG = False
+
+        try:
+            for i in range(count):
+                if STOP_FLAG:
+                    break
+
+                text = SPAM_TEXTS[i % len(SPAM_TEXTS)]
+
+                if reply_msg:
+                    sent = await reply_msg.reply(text)
+                else:
+                    sent = await client.send_message(target_chat, text)
+
+                asyncio.create_task(auto_delete(sent))
+                await asyncio.sleep(SPAM_DELAY)
+
+        finally:
+            SPAM_RUNNING = False
+            STOP_FLAG = False
+
+    except Exception as e:
+        mark_plugin_error("spambot.py", e)
+        await log_error(client, "spambot.py", e)

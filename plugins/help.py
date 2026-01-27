@@ -38,11 +38,11 @@ Extra:
 .help all
 .help broken
 .help2
+.help3
 """
 
 # =====================
 # PLUGIN WISE HELP
-# (NO DUPLICATE HEADINGS)
 # =====================
 
 HELP_PLUGINS = {
@@ -90,6 +90,7 @@ HELP_PLUGINS = {
 
 "media": """
 .ss | exm: (reply view-once media) .ss
+.save | exm: (reply) .save
 """,
 
 "games": """
@@ -99,11 +100,11 @@ HELP_PLUGINS = {
 """,
 
 "fun": """
-.slap <user> | exm: .slap @user
-.hug <user> | exm: .hug @user
-.kiss <user> | exm: .kiss @user
-.poke <user> | exm: .poke @user
-.tickle <user> | exm: .tickle @user
+.neko | exm: .neko
+.nekokiss | exm: .nekokiss
+.nekohug | exm: .nekohug
+.nekoslap | exm: .nekoslap
+.nekofuck | exm: .nekofuck
 """,
 
 "random": """
@@ -120,6 +121,18 @@ HELP_PLUGINS = {
 "auto": """
 .autoreply on | exm: .autoreply on
 .autoreply off | exm: .autoreply off
+
+.autoreplydelay <sec> | exm: .autoreplydelay 5
+
+.setmorning <text>
+.setafternoon <text>
+.setevening <text>
+.setnight <text>
+
+.awhitelist | exm: (reply) .awhitelist
+.ablacklist | exm: (reply) .ablacklist
+.awhitelistdel | exm: (reply) .awhitelistdel
+.ablacklistdel | exm: (reply) .ablacklistdel
 """,
 
 "dev": """

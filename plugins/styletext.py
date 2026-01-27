@@ -14,7 +14,9 @@ STYLES = {
     "strike": lambda t: f"~~{t}~~",
     "underline": lambda t: f"<u>{t}</u>",
     "spoiler": lambda t: f"||{t}||",
-    "emoji": lambda t: " ".join(f"{c}️⃣" for c in t if c.isalnum()),
+    "emoji": lambda t: " ".join(
+        f"{c}️⃣" if c.isdigit() else f"{c}⃣" for c in t
+    ),
     "space": lambda t: " ".join(list(t)),
 }
 
@@ -47,11 +49,18 @@ async def style_handler(client: Client, m):
 
         styled = STYLES[cmd](text)
 
-        msg = await client.send_message(
-            m.chat.id,
-            styled,
-            parse_mode="HTML" if cmd == "underline" else None
-        )
+        # underline needs HTML, others don't
+        if cmd == "underline":
+            msg = await client.send_message(
+                m.chat.id,
+                styled,
+                parse_mode="HTML"
+            )
+        else:
+            msg = await client.send_message(
+                m.chat.id,
+                styled
+            )
 
         await auto_delete(msg, 40)
 

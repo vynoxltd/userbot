@@ -7,19 +7,30 @@ from utils.plugin_status import get_broken_plugins
 from utils.logger import log_error
 from utils.auto_delete import auto_delete
 
-# =====================
-# PLUGIN LOAD MARK
-# =====================
 print("✔ help2.py loaded")
 
+# Telegram safe limit (real limit ~4096)
+MAX_LEN = 3500
+
+
 # =====================
-# BUILD MAIN HELP (AUTO)
+# SEND LONG TEXT SAFELY
+# =====================
+async def send_long(e, text, delete_after=40):
+    for i in range(0, len(text), MAX_LEN):
+        msg = await e.reply(text[i:i + MAX_LEN])
+        if delete_after:
+            await auto_delete(msg, delete_after)
+
+
+# =====================
+# BUILD MAIN HELP
 # =====================
 def build_main_help():
     plugins = sorted(get_all_help().keys())
 
     text = (
-        "USERBOT HELP (AUTO)\n\n"
+        "📘 USERBOT HELP (AUTO)\n\n"
         "Use:\n"
         ".help2 plugin\n\n"
         "Available plugins:\n"
@@ -36,15 +47,17 @@ def build_main_help():
 
     return text
 
+
 # =====================
 # HELP2 COMMAND
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.help2(?: (.*))?"))
+@bot.on(events.NewMessage(pattern=r"\.help2(?:\s+(.*))?$"))
 async def help2_cmd(e):
     if not is_owner(e):
         return
 
     try:
+        # delete command safely
         try:
             await e.delete()
         except:
@@ -61,13 +74,13 @@ async def help2_cmd(e):
             await auto_delete(msg, 40)
             return
 
-        arg = arg.lower()
+        arg = arg.lower().strip()
 
         # -----------------
         # .help2 all
         # -----------------
         if arg == "all":
-            text = "ALL COMMANDS\n\n"
+            text = "📚 ALL COMMANDS\n\n"
 
             for name, section in help_data.items():
                 text += (
@@ -77,8 +90,7 @@ async def help2_cmd(e):
                     f"{section.strip()}\n\n"
                 )
 
-            msg = await e.reply(text)
-            await auto_delete(msg, 40)
+            await send_long(e, text, 40)
             return
 
         # -----------------
@@ -88,29 +100,33 @@ async def help2_cmd(e):
             broken = get_broken_plugins()
 
             if not broken:
-                msg = await e.reply("All plugins are working fine ✅")
-            else:
-                text = "BROKEN PLUGINS\n\n"
-                for name, info in broken.items():
-                    text += (
-                        f"{name}\n"
-                        f"Error: {info['error']}\n\n"
-                    )
-                msg = await e.reply(text)
+                msg = await e.reply("✅ All plugins are working fine")
+                await auto_delete(msg, 10)
+                return
 
-            await auto_delete(msg, 15)
+            text = "🚨 BROKEN PLUGINS\n\n"
+
+            for name, info in broken.items():
+                text += (
+                    f"❌ {name}\n"
+                    f"Error: {info.get('error')}\n"
+                    f"Time: {info.get('time')}\n"
+                    "--------------------\n"
+                )
+
+            await send_long(e, text, 20)
             return
 
         # -----------------
-        # .help2 plugin
+        # .help2 <plugin>
         # -----------------
-        text = help_data.get(arg)
-        if not text:
-            msg = await e.reply("Unknown help section ❌")
-        else:
-            msg = await e.reply(text)
+        section = help_data.get(arg)
+        if not section:
+            msg = await e.reply("❌ Unknown help section")
+            await auto_delete(msg, 5)
+            return
 
-        await auto_delete(msg, 40)
+        await send_long(e, section.strip(), 40)
 
-    except Exception:
-        await log_error(bot, "help2.py")
+    except Exception as ex:
+        await log_error(bot, "help2.py", ex)

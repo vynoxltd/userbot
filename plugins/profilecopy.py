@@ -15,7 +15,7 @@ import time
 PLUGIN_NAME = "profilecopy.py"
 
 # =====================
-# HEALTH INIT
+# HEALTH INIT (pluginhealth.py compatible)
 # =====================
 try:
     mongo.admin.command("ping")
@@ -24,31 +24,33 @@ except Exception as e:
     mark_plugin_error(PLUGIN_NAME, e)
 
 # =====================
-# HELP (Help4 compatible)
+# HELP4 AUTO REGISTER
 # =====================
 register_help(
     "profilecopy",
     """
+🧬 PROFILE COPY & CLONE (Cloud Based)
+
+📦 Backup (MongoDB only)
 .backupprofile
 .backupprofile force
-.backupprofile cloud
-
 .restoreprofile
-.restoreprofile cloud
-
 .delbackupprofile
-.delbackupprofile cloud
-
 .backupinfo
 
-.copybio   (reply)
-.copyname  (reply)
-.copydp    (reply)
+📋 Copy (reply required)
+.copyname
+.copybio
+.copydp
+.steal
 
+🧪 Clone
 .clone <seconds> (reply)
 .clonestatus
 
-.steal (reply)
+🤫 Silent Clone
+.silentclone on
+.silentclone off
 """
 )
 
@@ -59,14 +61,15 @@ db = mongo["userbot"]
 profile_col = db["profile_backup"]
 
 # =====================
-# CLONE STATE (HEALTH SAFE)
+# CLONE STATE
 # =====================
 CLONE_ACTIVE = False
 CLONE_END_TIME = 0
 CLONE_TASK = None
+SILENT_CLONE = False
 
 # =====================
-# BACKUP PROFILE
+# BACKUP PROFILE (CLOUD)
 # =====================
 async def backup_profile(client, force=False):
     if profile_col.find_one({"_id": "backup"}) and not force:
@@ -148,8 +151,9 @@ async def copyname_cmd(client, m):
     try:
         await m.delete()
         await copy_name(client, m.reply_to_message.from_user)
-        msg = await client.send_message(m.chat.id, "✅ Name copied")
-        await auto_delete(msg, 3)
+        if not SILENT_CLONE:
+            msg = await client.send_message(m.chat.id, "✅ Name copied")
+            await auto_delete(msg, 3)
     except Exception as e:
         mark_plugin_error(PLUGIN_NAME, e)
         await log_error(client, PLUGIN_NAME, e)
@@ -159,8 +163,9 @@ async def copybio_cmd(client, m):
     try:
         await m.delete()
         await copy_bio(client, m.reply_to_message.from_user)
-        msg = await client.send_message(m.chat.id, "✅ Bio copied")
-        await auto_delete(msg, 3)
+        if not SILENT_CLONE:
+            msg = await client.send_message(m.chat.id, "✅ Bio copied")
+            await auto_delete(msg, 3)
     except Exception as e:
         mark_plugin_error(PLUGIN_NAME, e)
         await log_error(client, PLUGIN_NAME, e)
@@ -170,11 +175,12 @@ async def copydp_cmd(client, m):
     try:
         await m.delete()
         ok = await copy_dp(client, m.reply_to_message.from_user)
-        msg = await client.send_message(
-            m.chat.id,
-            "✅ DP copied" if ok else "❌ User has no DP"
-        )
-        await auto_delete(msg, 3)
+        if not SILENT_CLONE:
+            msg = await client.send_message(
+                m.chat.id,
+                "✅ DP copied" if ok else "❌ User has no DP"
+            )
+            await auto_delete(msg, 3)
     except Exception as e:
         mark_plugin_error(PLUGIN_NAME, e)
         await log_error(client, PLUGIN_NAME, e)
@@ -190,8 +196,9 @@ async def steal_cmd(client, m):
         await copy_name(client, user)
         await copy_bio(client, user)
         await copy_dp(client, user)
-        msg = await client.send_message(m.chat.id, "🧬 Profile stolen")
-        await auto_delete(msg, 4)
+        if not SILENT_CLONE:
+            msg = await client.send_message(m.chat.id, "🧬 Profile stolen")
+            await auto_delete(msg, 4)
     except Exception as e:
         mark_plugin_error(PLUGIN_NAME, e)
         await log_error(client, PLUGIN_NAME, e)
@@ -221,8 +228,9 @@ async def clone_cmd(client, m):
         seconds = int(m.command[1])
         user = m.reply_to_message.from_user
         CLONE_TASK = asyncio.create_task(clone_worker(client, user, seconds))
-        msg = await client.send_message(m.chat.id, f"🧬 Clone started for {seconds}s")
-        await auto_delete(msg, 4)
+        if not SILENT_CLONE:
+            msg = await client.send_message(m.chat.id, f"🧬 Clone started for {seconds}s")
+            await auto_delete(msg, 4)
     except Exception as e:
         mark_plugin_error(PLUGIN_NAME, e)
         await log_error(client, PLUGIN_NAME, e)
@@ -235,6 +243,28 @@ async def clonestatus_cmd(client, m):
         msg = await client.send_message(m.chat.id, f"🧬 Clone active ({left}s left)")
     else:
         msg = await client.send_message(m.chat.id, "❌ No active clone")
+    await auto_delete(msg, 4)
+
+# =====================
+# SILENT CLONE
+# =====================
+@Client.on_message(owner_only & filters.command("silentclone", "."))
+async def silentclone_cmd(client, m):
+    global SILENT_CLONE
+    await m.delete()
+
+    if len(m.command) < 2:
+        msg = await client.send_message(m.chat.id, "Usage: .silentclone on/off")
+        await auto_delete(msg, 4)
+        return
+
+    if m.command[1].lower() == "on":
+        SILENT_CLONE = True
+        msg = await client.send_message(m.chat.id, "🤫 Silent clone enabled")
+    else:
+        SILENT_CLONE = False
+        msg = await client.send_message(m.chat.id, "🔊 Silent clone disabled")
+
     await auto_delete(msg, 4)
 
 # =====================
@@ -278,6 +308,27 @@ async def delbackup_cmd(client, m):
             "🗑 Profile backup deleted" if ok else "❌ No backup found"
         )
         await auto_delete(msg, 4)
+    except Exception as e:
+        mark_plugin_error(PLUGIN_NAME, e)
+        await log_error(client, PLUGIN_NAME, e)
+
+@Client.on_message(owner_only & filters.command("backupinfo", "."))
+async def backupinfo_cmd(client, m):
+    try:
+        await m.delete()
+        data = profile_col.find_one({"_id": "backup"})
+        if not data:
+            msg = await client.send_message(m.chat.id, "❌ No backup found")
+        else:
+            msg = await client.send_message(
+                m.chat.id,
+                f"📦 BACKUP INFO\n\n"
+                f"Name: {data.get('first_name','')} {data.get('last_name','')}\n"
+                f"Bio: {'Yes' if data.get('bio') else 'No'}\n"
+                f"DP: {'Yes' if data.get('dp_file_id') else 'No'}\n"
+                f"Time: {data.get('backup_time')}"
+            )
+        await auto_delete(msg, 6)
     except Exception as e:
         mark_plugin_error(PLUGIN_NAME, e)
         await log_error(client, PLUGIN_NAME, e)

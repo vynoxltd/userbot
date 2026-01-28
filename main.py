@@ -1,19 +1,19 @@
+# main.py
 import os
 import asyncio
 from userbot import bot
 from loader import load_plugins
 from utils.auto_delete import auto_delete
 
-print("🚀 Starting userbot...")
+async def main():
+    print("🚀 Starting userbot...")
 
-# load all plugins
-load_plugins()
+    load_plugins()
 
-async def startup():
     await bot.start()
     print("✅ Userbot started successfully")
 
-    # 🔔 restart success message
+    # restart message
     restart_chat = os.environ.pop("RESTART_CHAT", None)
     if restart_chat:
         try:
@@ -25,8 +25,9 @@ async def startup():
         except Exception:
             pass
 
-    await bot.run_until_disconnected()
+    # 👇 IMPORTANT PART
+    await asyncio.Event().wait()   # keeps loop alive FOREVER
 
 
 if __name__ == "__main__":
-    asyncio.run(startup())
+    asyncio.run(main())

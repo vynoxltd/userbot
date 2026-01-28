@@ -9,30 +9,30 @@ from utils.logger import log_error
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 
-# ======================
+# =====================
 # PLUGIN LOAD
-# ======================
+# =====================
 mark_plugin_loaded("fun.py")
 print("✔ fun.py loaded")
 
-# ======================
-# AUTO HELP REGISTER
-# ======================
+# =====================
+# HELP REGISTER
+# =====================
 register_help(
     "fun",
-    ".slap\n"
-    ".hug\n"
-    ".kiss\n"
-    ".poke\n"
-    ".tickle\n\n"
-    "• Reply / mention based\n"
-    "• Fun action messages\n"
-    "• Auto delete after few seconds"
+    ".slap (reply / mention)\n"
+    ".hug (reply / mention)\n"
+    ".kiss (reply / mention)\n"
+    ".poke (reply / mention)\n"
+    ".tickle (reply / mention)\n\n"
+    "• Fun action commands\n"
+    "• Owner only\n"
+    "• Auto delete"
 )
 
-# ======================
+# =====================
 # ACTION DATA
-# ======================
+# =====================
 ACTIONS = {
     "slap": {
         "gifs": [
@@ -90,10 +90,10 @@ ACTIONS = {
     }
 }
 
-# ======================
+# =====================
 # FUN HANDLER
-# ======================
-@bot.on(events.NewMessage(pattern=r"\.(slap|hug|kiss|poke|tickle)$"))
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.(slap|hug|kiss|poke|tickle)(?:\s|$)"))
 async def fun_handler(e):
     if not is_owner(e):
         return
@@ -106,21 +106,21 @@ async def fun_handler(e):
 
         try:
             await e.delete()
-        except Exception:
+        except:
             pass
 
         actor = f"[You](tg://user?id={e.sender_id})"
         target = actor
         reply_to = None
 
-        # reply based target
+        # reply based
         if e.is_reply:
             r = await e.get_reply_message()
             if r and r.sender_id:
                 target = f"[User](tg://user?id={r.sender_id})"
                 reply_to = r.id
 
-        # mention based target
+        # mention based
         elif e.message.entities:
             for ent in e.message.entities:
                 if isinstance(ent, MessageEntityTextMention):
@@ -132,7 +132,7 @@ async def fun_handler(e):
                         user = await bot.get_entity(username)
                         target = f"[User](tg://user?id={user.id})"
                         break
-                    except Exception:
+                    except:
                         pass
 
         text = random.choice(data["texts"]).format(
@@ -141,21 +141,21 @@ async def fun_handler(e):
         )
 
         if data["gifs"] and random.choice([True, False]):
-            sent = await bot.send_file(
+            msg = await bot.send_file(
                 e.chat_id,
                 random.choice(data["gifs"]),
                 caption=text,
                 reply_to=reply_to
             )
         else:
-            sent = await bot.send_message(
+            msg = await bot.send_message(
                 e.chat_id,
                 text,
                 reply_to=reply_to
             )
 
         await asyncio.sleep(6)
-        await sent.delete()
+        await msg.delete()
 
     except Exception as ex:
         mark_plugin_error("fun.py", ex)

@@ -1,9 +1,14 @@
+# userbot.py
+import os
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from config import API_ID, API_HASH, SESSION
+
+API_ID = int(os.environ.get("API_ID"))
+API_HASH = os.environ.get("API_HASH")
+STRING_SESSION = os.environ.get("STRING_SESSION")
 
 bot = TelegramClient(
-    StringSession(SESSION),
+    StringSession(STRING_SESSION),
     API_ID,
     API_HASH
 )

@@ -6,10 +6,12 @@ from userbot import bot
 from utils.owner import is_owner
 from utils.logger import log_error
 from utils.help_registry import register_help
+from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 
 # =====================
 # PLUGIN LOAD
 # =====================
+mark_plugin_loaded("games.py")
 print("✔ games.py loaded")
 
 # =====================
@@ -30,7 +32,7 @@ register_help(
 # =====================
 # GAMES HANDLER
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.(dice|coin|luck|rate|roll)(?: (.*))?$"))
+@bot.on(events.NewMessage(pattern=r"\.(dice|coin|luck|rate|roll)(?:\s+(.*))?$"))
 async def games_handler(e):
     if not is_owner(e):
         return
@@ -39,9 +41,10 @@ async def games_handler(e):
         cmd = e.pattern_match.group(1)
         arg = e.pattern_match.group(2)
 
+        # delete command safely
         try:
             await e.delete()
-        except Exception:
+        except:
             pass
 
         if cmd == "dice":
@@ -57,7 +60,7 @@ async def games_handler(e):
             text = f"⭐ Rating: {random.randint(0, 10)}/10"
 
         elif cmd == "roll":
-            if arg and arg.isdigit():
+            if arg and arg.isdigit() and int(arg) > 0:
                 num = int(arg)
             else:
                 num = 100
@@ -70,5 +73,6 @@ async def games_handler(e):
         await asyncio.sleep(6)
         await msg.delete()
 
-    except Exception:
-        await log_error(bot, "games.py")
+    except Exception as ex:
+        mark_plugin_error("games.py", ex)
+        await log_error(bot, "games.py", ex)

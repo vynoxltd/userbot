@@ -1,16 +1,13 @@
 import os
 import shutil
-import asyncio
 from telethon import events
 
 from userbot import bot
 from utils.owner import is_owner
 from utils.help_registry import register_help
 from utils.logger import log_error
+from utils.auto_delete import auto_delete
 
-# =====================
-# PLUGIN LOAD
-# =====================
 print("✔ diskclean.py loaded")
 
 # =====================
@@ -46,14 +43,12 @@ def get_folder_size(path):
         for f in files:
             try:
                 total += os.path.getsize(os.path.join(root, f))
-            except Exception:
+            except:
                 pass
     return total
 
-
 def format_mb(size):
     return round(size / (1024 * 1024), 2)
-
 
 def calculate_usage():
     total = 0
@@ -76,7 +71,10 @@ async def disk_usage_cmd(e):
         return
 
     try:
-        await e.delete()
+        try:
+            await e.delete()
+        except:
+            pass
 
         total, details = calculate_usage()
 
@@ -87,11 +85,10 @@ async def disk_usage_cmd(e):
         text += f"\nTotal: {format_mb(total)} MB"
 
         msg = await bot.send_message(e.chat_id, text)
-        await asyncio.sleep(12)
-        await msg.delete()
+        await auto_delete(msg, 12)
 
-    except Exception:
-        await log_error(bot, "diskclean.py")
+    except Exception as ex:
+        await log_error(bot, "diskclean.py", ex)
 
 # =====================
 # DISK CLEAN
@@ -102,9 +99,12 @@ async def disk_clean_cmd(e):
         return
 
     try:
-        await e.delete()
+        try:
+            await e.delete()
+        except:
+            pass
 
-        arg = e.pattern_match.group(1)
+        arg = (e.pattern_match.group(1) or "").strip()
 
         before_total, before_details = calculate_usage()
 
@@ -112,34 +112,32 @@ async def disk_clean_cmd(e):
         # DRY RUN
         # -----------------
         if arg == "--dry":
-            text = "DISK CLEAN PREVIEW\n\n"
+            text = "🧪 DISK CLEAN PREVIEW\n\n"
             for f, size in before_details.items():
                 text += f"• {f}: {format_mb(size)} MB\n"
 
             text += (
                 f"\nTotal reclaimable: {format_mb(before_total)} MB\n\n"
-                "No files were deleted"
+                "ℹ️ No files were deleted"
             )
 
             msg = await bot.send_message(e.chat_id, text)
-            await asyncio.sleep(15)
-            await msg.delete()
+            await auto_delete(msg, 15)
             return
 
         # -----------------
-        # CONFIRM CHECK
+        # CONFIRM REQUIRED
         # -----------------
         if arg != "confirm":
             msg = await bot.send_message(
                 e.chat_id,
-                "Confirmation required\n\n"
+                "⚠️ Confirmation required\n\n"
                 "Use:\n"
                 ".diskclean confirm\n\n"
                 "Or preview:\n"
                 ".diskclean --dry"
             )
-            await asyncio.sleep(10)
-            await msg.delete()
+            await auto_delete(msg, 10)
             return
 
         # -----------------
@@ -154,7 +152,7 @@ async def disk_clean_cmd(e):
                     shutil.rmtree(folder)
                     os.makedirs(folder, exist_ok=True)
                     cleaned.append(folder)
-                except Exception:
+                except:
                     skipped.append(folder)
             else:
                 skipped.append(folder)
@@ -165,7 +163,7 @@ async def disk_clean_cmd(e):
         # -----------------
         # REPORT
         # -----------------
-        text = "DISK CLEAN REPORT\n\n"
+        text = "🧹 DISK CLEAN REPORT\n\n"
         text += (
             f"Before: {format_mb(before_total)} MB\n"
             f"After: {format_mb(after_total)} MB\n"
@@ -173,18 +171,17 @@ async def disk_clean_cmd(e):
         )
 
         if cleaned:
-            text += "Cleaned:\n"
+            text += "✅ Cleaned:\n"
             for f in cleaned:
                 text += f"• {f}\n"
 
         if skipped:
-            text += "\nSkipped:\n"
+            text += "\n⚠️ Skipped:\n"
             for f in skipped:
                 text += f"• {f}\n"
 
         msg = await bot.send_message(e.chat_id, text)
-        await asyncio.sleep(15)
-        await msg.delete()
+        await auto_delete(msg, 15)
 
-    except Exception:
-        await log_error(bot, "diskclean.py")
+    except Exception as ex:
+        await log_error(bot, "diskclean.py", ex)

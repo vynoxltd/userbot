@@ -59,7 +59,7 @@ async def log_error(client, plugin: str, error: Exception):
 
     try:
         text = (
-            f"PLUGIN ERROR\n\n"
+            "PLUGIN ERROR\n\n"
             f"Plugin: {plugin}\n"
             f"Time: {datetime.now().strftime('%d %b %Y %I:%M %p')}\n\n"
             f"Error:\n{str(error)}\n\n"
@@ -68,6 +68,23 @@ async def log_error(client, plugin: str, error: Exception):
         await client.send_message("me", text)
     except:
         pass
+
+
+# =====================
+# HELP REGISTRY (STRING BASED)
+# =====================
+# 🔥 EXACT MATCH with alive.py, help4.py, pluginhealth.py
+HELP_REGISTRY = {}
+
+def register_help(plugin: str, text: str):
+    """
+    plugin : help section name (basic, autoreply, pluginhealth, etc.)
+    text   : multiline help string
+    """
+    HELP_REGISTRY[plugin.lower()] = text.strip()
+
+def get_all_help():
+    return HELP_REGISTRY
 
 
 # =====================
@@ -91,7 +108,11 @@ if MONGO_URI:
 def set_var(key: str, value: str):
     if not vars_col:
         return
-    vars_col.update_one({"_id": key}, {"$set": {"value": value}}, upsert=True)
+    vars_col.update_one(
+        {"_id": key},
+        {"$set": {"value": value}},
+        upsert=True
+    )
 
 def get_var(key: str, default=None):
     if not vars_col:

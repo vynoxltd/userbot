@@ -4,25 +4,40 @@ from telethon import events
 from userbot import bot
 from utils.owner import is_owner
 from utils.logger import log_error
+from utils.plugin_status import mark_plugin_error
 
 # =====================
 # PLUGIN LOAD
 # =====================
 print("✔ forward.py loaded")
 
+
+# =====================
+# TARGET PARSER (FIX)
+# =====================
+def parse_target(raw):
+    raw = raw.strip()
+    if raw.lstrip("-").isdigit():
+        return int(raw)
+    return raw
+
+
 # =====================
 # FWD
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.fwd(?: (.*))?$"))
+@bot.on(events.NewMessage(pattern=r"\.fwd(?:\s+(.*))?$"))
 async def fwd(e):
     if not is_owner(e) or not e.is_reply:
         return
 
     try:
-        await e.delete()
+        try:
+            await e.delete()
+        except:
+            pass
 
-        target = e.pattern_match.group(1)
-        if not target:
+        raw = e.pattern_match.group(1)
+        if not raw:
             msg = await bot.send_message(
                 e.chat_id,
                 "Usage:\n.fwd CHAT_ID or @username"
@@ -31,6 +46,8 @@ async def fwd(e):
             await msg.delete()
             return
 
+        target = parse_target(raw)
+
         reply = await e.get_reply_message()
         await reply.forward_to(target)
 
@@ -38,29 +55,38 @@ async def fwd(e):
         await asyncio.sleep(3)
         await done.delete()
 
-    except Exception:
-        await log_error(bot, "forward.py")
+    except Exception as ex:
+        mark_plugin_error("forward.py", ex)
+        await log_error(bot, "forward.py", ex)
+
 
 # =====================
 # SILENT FWD
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.sfwd(?: (.*))?$"))
+@bot.on(events.NewMessage(pattern=r"\.sfwd(?:\s+(.*))?$"))
 async def silent_fwd(e):
     if not is_owner(e) or not e.is_reply:
         return
 
     try:
-        await e.delete()
+        try:
+            await e.delete()
+        except:
+            pass
 
-        target = e.pattern_match.group(1)
-        if not target:
+        raw = e.pattern_match.group(1)
+        if not raw:
             return
+
+        target = parse_target(raw)
 
         reply = await e.get_reply_message()
         await reply.forward_to(target)
 
-    except Exception:
-        await log_error(bot, "forward.py")
+    except Exception as ex:
+        mark_plugin_error("forward.py", ex)
+        await log_error(bot, "forward.py", ex)
+
 
 # =====================
 # FWD HERE
@@ -71,7 +97,10 @@ async def fwd_here(e):
         return
 
     try:
-        await e.delete()
+        try:
+            await e.delete()
+        except:
+            pass
 
         reply = await e.get_reply_message()
         await reply.forward_to(e.chat_id)
@@ -80,19 +109,24 @@ async def fwd_here(e):
         await asyncio.sleep(3)
         await done.delete()
 
-    except Exception:
-        await log_error(bot, "forward.py")
+    except Exception as ex:
+        mark_plugin_error("forward.py", ex)
+        await log_error(bot, "forward.py", ex)
+
 
 # =====================
 # MULTI FWD
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.mfwd(?: (.*))?$"))
+@bot.on(events.NewMessage(pattern=r"\.mfwd(?:\s+(.*))?$"))
 async def multi_fwd(e):
     if not is_owner(e) or not e.is_reply:
         return
 
     try:
-        await e.delete()
+        try:
+            await e.delete()
+        except:
+            pass
 
         args = (e.pattern_match.group(1) or "").split()
         if len(args) < 2 or not args[1].isdigit():
@@ -104,7 +138,7 @@ async def multi_fwd(e):
             await msg.delete()
             return
 
-        target = args[0]
+        target = parse_target(args[0])
         count = int(args[1])
 
         reply = await e.get_reply_message()
@@ -121,7 +155,7 @@ async def multi_fwd(e):
                 )
                 success += 1
                 await asyncio.sleep(0.4)
-            except Exception:
+            except:
                 pass
 
         done = await bot.send_message(
@@ -131,5 +165,6 @@ async def multi_fwd(e):
         await asyncio.sleep(3)
         await done.delete()
 
-    except Exception:
-        await log_error(bot, "forward.py")
+    except Exception as ex:
+        mark_plugin_error("forward.py", ex)
+        await log_error(bot, "forward.py", ex)

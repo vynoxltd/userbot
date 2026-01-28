@@ -91,12 +91,12 @@ async def backup_profile(client, force=False):
 
     dp_msg_id = None
     photos = []
-    async for p in client.get_chat_photos("me", limit=1):
+    async for p in client.get_chat_photos(me.id, limit=1):
         photos.append(p)
 
     if photos:
         file = await client.download_media(photos[0].file_id)
-        sent = await client.send_message("me", photo=file)
+        sent = await client.send_photo("me", photo=file)
         dp_msg_id = sent.id
         os.remove(file)
 

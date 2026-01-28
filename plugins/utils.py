@@ -192,3 +192,21 @@ def register_help(plugin: str, text: str):
 
 def get_all_help():
     return HELP_REGISTRY
+
+# =====================
+# MONGO HEALTH CHECK
+# =====================
+def check_mongo_health():
+    try:
+        mongo.admin.command("ping")
+        return {
+            "ok": True,
+            "db": db.name,
+            "collection": vars_col.name,
+            "time": datetime.now().strftime("%d %b %Y %I:%M %p")
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "error": str(e)
+}

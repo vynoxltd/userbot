@@ -1,4 +1,8 @@
-from config import OWNER_ID
+import os
 
-def is_owner(event):
-    return event.sender_id == OWNER_ID
+OWNER_ID = int(os.environ.get("OWNER_ID", "0"))
+
+def is_owner(e):
+    if not OWNER_ID:
+        return False
+    return e.sender_id == OWNER_ID

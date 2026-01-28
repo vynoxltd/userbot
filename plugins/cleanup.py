@@ -7,11 +7,14 @@ from userbot import bot
 from utils.owner import is_owner
 from utils.help_registry import register_help
 from utils.logger import log_error
+from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
+
+PLUGIN_NAME = "cleanup.py"
 
 # =====================
-# PLUGIN LOAD
+# PLUGIN LOAD (health)
 # =====================
-print("✔ cleanup.py loaded")
+mark_plugin_loaded(PLUGIN_NAME)
 
 # =====================
 # AUTO HELP REGISTER
@@ -44,8 +47,9 @@ async def is_admin(chat_id: int, user_id: int) -> bool:
     except Exception:
         return False
 
+
 # =====================
-# PURGE (reply based)
+# PURGE
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.purge$"))
 async def purge_handler(e):
@@ -55,13 +59,12 @@ async def purge_handler(e):
     try:
         await e.delete()
 
+        reply = await e.get_reply_message()
         chat_id = e.chat_id
         user_id = e.sender_id
-        reply = await e.get_reply_message()
 
         start_id = reply.id
         end_id = e.id - 1
-
         if start_id > end_id:
             return
 
@@ -73,11 +76,8 @@ async def purge_handler(e):
             min_id=start_id - 1,
             max_id=end_id
         ):
-            if admin:
+            if admin or msg.sender_id == user_id:
                 msg_ids.append(msg.id)
-            else:
-                if msg.sender_id == user_id:
-                    msg_ids.append(msg.id)
 
         for i in range(0, len(msg_ids), 100):
             await bot.delete_messages(chat_id, msg_ids[i:i + 100])
@@ -87,11 +87,13 @@ async def purge_handler(e):
         await asyncio.sleep(3)
         await done.delete()
 
-    except Exception:
-        await log_error(bot, "cleanup.py")
+    except Exception as e:
+        mark_plugin_error(PLUGIN_NAME, e)
+        await log_error(bot, PLUGIN_NAME, e)
+
 
 # =====================
-# CLEAN (count based)
+# CLEAN
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.clean (\d+)"))
 async def clean_handler(e):
@@ -109,11 +111,8 @@ async def clean_handler(e):
         msg_ids = []
 
         async for msg in bot.iter_messages(chat_id, limit=count):
-            if admin:
+            if admin or msg.sender_id == user_id:
                 msg_ids.append(msg.id)
-            else:
-                if msg.sender_id == user_id:
-                    msg_ids.append(msg.id)
 
         for i in range(0, len(msg_ids), 100):
             await bot.delete_messages(chat_id, msg_ids[i:i + 100])
@@ -126,11 +125,13 @@ async def clean_handler(e):
         await asyncio.sleep(3)
         await done.delete()
 
-    except Exception:
-        await log_error(bot, "cleanup.py")
+    except Exception as e:
+        mark_plugin_error(PLUGIN_NAME, e)
+        await log_error(bot, PLUGIN_NAME, e)
+
 
 # =====================
-# DEL (single message)
+# DEL
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.del$"))
 async def del_single(e):
@@ -140,22 +141,23 @@ async def del_single(e):
     try:
         await e.delete()
 
+        target = await e.get_reply_message()
         chat_id = e.chat_id
         user_id = e.sender_id
-        target = await e.get_reply_message()
 
         admin = await is_admin(chat_id, user_id)
-
         if not admin and target.sender_id != user_id:
             return
 
         await bot.delete_messages(chat_id, target.id)
 
-    except Exception:
-        await log_error(bot, "cleanup.py")
+    except Exception as e:
+        mark_plugin_error(PLUGIN_NAME, e)
+        await log_error(bot, PLUGIN_NAME, e)
+
 
 # =====================
-# DELALL (user based)
+# DELALL
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.delall$"))
 async def del_all(e):
@@ -165,15 +167,11 @@ async def del_all(e):
     try:
         await e.delete()
 
+        target = await e.get_reply_message()
         chat_id = e.chat_id
         user_id = e.sender_id
-        target = await e.get_reply_message()
-
-        if not target.sender_id:
-            return
 
         admin = await is_admin(chat_id, user_id)
-
         if not admin and target.sender_id != user_id:
             return
 
@@ -194,5 +192,6 @@ async def del_all(e):
         await asyncio.sleep(3)
         await done.delete()
 
-    except Exception:
-        await log_error(bot, "cleanup.py")
+    except Exception as e:
+        mark_plugin_error(PLUGIN_NAME, e)
+        await log_error(bot, PLUGIN_NAME, e)

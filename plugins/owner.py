@@ -1,11 +1,21 @@
+# plugins/owner.py
 from pyrogram import filters
 import os
 
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
 def owner_check(_, __, m):
-    if not m.from_user:
+    try:
+        # Allow outgoing messages from self
+        if m.from_user and m.from_user.id == OWNER_ID:
+            return True
+
+        # Allow messages sent by you (filters.me equivalent)
+        if m.outgoing:
+            return True
+
         return False
-    return m.from_user.id == OWNER_ID
+    except Exception:
+        return False
 
 owner_only = filters.create(owner_check)

@@ -3,6 +3,7 @@ import asyncio
 import traceback
 import os
 from datetime import datetime, timedelta
+from pyrogram import Client
 
 # =====================
 # PLUGIN HEALTH
@@ -26,7 +27,7 @@ def mark_plugin_error(plugin: str, error: Exception):
     )
     DISABLED_PLUGINS.add(plugin)
 
-def is_plugin_disabled(plugin: str) -> bool:
+def is_plugin_disabled(plugin: str):
     return plugin in DISABLED_PLUGINS
 
 def get_plugin_health():
@@ -73,14 +74,9 @@ async def log_error(client, plugin: str, error: Exception):
 # =====================
 # HELP REGISTRY (STRING BASED)
 # =====================
-# 🔥 EXACT MATCH with alive.py, help4.py, pluginhealth.py
 HELP_REGISTRY = {}
 
 def register_help(plugin: str, text: str):
-    """
-    plugin : help section name (basic, autoreply, pluginhealth, etc.)
-    text   : multiline help string
-    """
     HELP_REGISTRY[plugin.lower()] = text.strip()
 
 def get_all_help():
@@ -88,7 +84,7 @@ def get_all_help():
 
 
 # =====================
-# OPTIONAL MONGO (SAFE)
+# OPTIONAL MONGO STORAGE
 # =====================
 mongo = None
 vars_col = None
@@ -129,15 +125,35 @@ def all_vars():
         return {}
     return {doc["_id"]: doc["value"] for doc in vars_col.find()}
 
-def check_mongo_health():
-    if not mongo:
-        return {"ok": False, "error": "Mongo disabled"}
-    try:
-        mongo.admin.command("ping")
-        ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
-        return {
-            "ok": True,
-            "time": ist.strftime("%d %b %Y %I:%M %p")
-        }
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+
+# =====================
+# 🔥 BOT MANAGER SUPPORT (FIX FOR ERROR)
+# =====================
+RUNNING_BOTS = {}
+
+async def start_bot(name: str, token: str, api_id: int, api_hash: str):
+    if name in RUNNING_BOTS:
+        raise RuntimeError("Bot already running")
+
+    bot = Client(
+        name=f"bot_{name}",
+        bot_token=token,
+        api_id=api_id,
+        api_hash=api_hash
+    )
+
+    await bot.start()
+    RUNNING_BOTS[name] = bot
+
+
+async def stop_bot(name: str):
+    bot = RUNNING_BOTS.get(name)
+    if not bot:
+        raise RuntimeError("Bot not running")
+
+    await bot.stop()
+    del RUNNING_BOTS[name]
+
+
+def list_running_bots():
+    return list(RUNNING_BOTS.keys())

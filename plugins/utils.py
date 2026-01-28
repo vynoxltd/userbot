@@ -205,7 +205,42 @@ async def stop_bot(name: str):
 def list_running_bots():
     return list(RUNNING_BOTS.keys())
 
+# =====================
+# BOT MANAGER SUPPORT
+# =====================
 
+from pyrogram import Client
+
+RUNNING_BOTS = {}  # name -> Client instance
+
+
+async def start_bot(name: str, token: str, api_id: int, api_hash: str):
+    if name in RUNNING_BOTS:
+        raise RuntimeError("Bot already running")
+
+    bot = Client(
+        name=f"bot_{name}",
+        bot_token=token,
+        api_id=api_id,
+        api_hash=api_hash,
+        plugins=dict(root="bot_plugins")
+    )
+
+    await bot.start()
+    RUNNING_BOTS[name] = bot
+
+
+async def stop_bot(name: str):
+    bot = RUNNING_BOTS.get(name)
+    if not bot:
+        raise RuntimeError("Bot not running")
+
+    await bot.stop()
+    del RUNNING_BOTS[name]
+
+
+def list_running_bots():
+    return list(RUNNING_BOTS.keys())
 # ==========================================================
 # HELP REGISTRY (SECONDARY SYSTEM)
 # ==========================================================

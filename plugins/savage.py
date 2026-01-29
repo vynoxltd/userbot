@@ -118,7 +118,7 @@ async def savage_handler(e):
         target, reply_to = await get_target(e)
         you = f"[You](tg://user?id={e.sender_id})"
 
-        # ========= LOGIC =========
+        # ========= COMMAND LOGIC =========
         if cmd == "roast":
             if not target: return
             text = random.choice(ROASTS).format(t=target)
@@ -128,8 +128,8 @@ async def savage_handler(e):
             text = f"🧠 {target} ka IQ hai **{random.randint(40,180)}**"
 
         elif cmd == "ship":
-            pair = target if target else you
-            text = f"💞 {pair} + {you} = **{random.randint(1,100)}%** match"
+            if not target: return
+            text = f"💞 {target} ❤️ {you} = **{random.randint(1,100)}%** match"
 
         elif cmd == "future":
             if not target: return

@@ -21,7 +21,6 @@ async def health_handler(e):
 
     broken = get_broken_plugins()
 
-    # ✅ ALL OK
     if not broken:
         text = (
             "🩺 **Userbot Health**\n\n"
@@ -32,7 +31,6 @@ async def health_handler(e):
         await e.reply(text)
         return
 
-    # ❌ BROKEN PLUGINS
     text = (
         "🩺 **Userbot Health**\n\n"
         f"⏱ **Uptime:** {get_uptime()}\n"
@@ -41,6 +39,6 @@ async def health_handler(e):
     )
 
     for name, info in broken.items():
-        text += f"\n• `{name}`\n{info['error'][:500]}"
+        text += f"\n• **{name}**\n`{info['error'][:400]}`"
 
     await e.reply(text)

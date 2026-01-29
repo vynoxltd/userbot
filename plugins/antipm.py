@@ -10,7 +10,7 @@ from utils.owner import is_owner
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 from utils.logger import log_error
-from utils.mongo import mongo
+from utils.mongo import mongo  # Mongo client
 
 PLUGIN_NAME = "antipm.py"
 
@@ -32,6 +32,7 @@ SPAM_WINDOW = 10  # seconds
 # =====================
 if mongo is None:
     print("⚠️ MongoDB not connected — antipm disabled")
+    db = None
     col_users = None
     col_state = None
 else:
@@ -53,6 +54,7 @@ def get_state():
 def set_state(key, value):
     if col_state is None:
         return
+
     col_state.update_one(
         {"_id": "state"},
         {"$set": {key: value}},
@@ -61,17 +63,25 @@ def set_state(key, value):
 
 
 def get_user(uid):
-    return col_users.find_one({"_id": uid}) if col_users else None
+    if col_users is None:
+        return None
+    return col_users.find_one({"_id": uid})
 
 
 def save_user(uid, data):
-    if col_users:
-        col_users.update_one({"_id": uid}, {"$set": data}, upsert=True)
+    if col_users is None:
+        return
+    col_users.update_one(
+        {"_id": uid},
+        {"$set": data},
+        upsert=True
+    )
 
 
 def reset_user(uid):
-    if col_users:
-        col_users.delete_one({"_id": uid})
+    if col_users is None:
+        return
+    col_users.delete_one({"_id": uid})
 
 # =====================
 # HELP
@@ -79,66 +89,90 @@ def reset_user(uid):
 register_help(
     "antipm",
     ".antipm on | off\n"
-    ".antipm silent on | off\n"
-    ".antipm status\n"
+    ".antipms on | off\n"
+    ".antipmstatus\n"
     ".approve (reply)\n"
     ".disapprove (reply)\n\n"
     "• MongoDB based Anti-PM\n"
     "• Warning replace system\n"
     "• Spam detection\n"
-    "• DM only"
+    "• DM only\n"
+    "• Owner safe"
 )
 
 # =====================
-# COMMAND HANDLER (SINGLE)
+# MASTER ON / OFF
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.antipm(?:\s+(.*))?$"))
-async def antipm_command(e):
+@bot.on(events.NewMessage(pattern=r"\.antipm (on|off)$"))
+async def toggle_antipm(e):
     if not is_owner(e):
         return
+
+    state = e.pattern_match.group(1) == "on"
+    set_state("enabled", state)
 
     try:
         await e.delete()
     except:
         pass
 
-    arg = (e.pattern_match.group(1) or "").lower().strip()
-    state = get_state()
+    msg = await bot.send_message(
+        e.chat_id,
+        f"🛡 Anti-PM {'ENABLED' if state else 'DISABLED'}"
+    )
+    await asyncio.sleep(5)
+    await msg.delete()
 
-    # ---------- STATUS ----------
-    if arg == "status":
-        total = col_users.count_documents({}) if col_users else 0
-        msg = await bot.send_message(
-            e.chat_id,
-            "🛡 **Anti-PM Status**\n\n"
-            f"• Enabled: `{state['enabled']}`\n"
-            f"• Silent: `{state['silent']}`\n"
-            f"• Tracked users: `{total}`"
-        )
-        await asyncio.sleep(8)
-        return await msg.delete()
+# =====================
+# SILENT MODE (NEW CMD)
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.antipms (on|off)$"))
+async def antipms_cmd(e):
+    if not is_owner(e):
+        return
 
-    # ---------- ON / OFF ----------
-    if arg in ("on", "off"):
-        enabled = arg == "on"
-        set_state("enabled", enabled)
-        msg = await bot.send_message(
-            e.chat_id,
-            f"🛡 Anti-PM {'ENABLED' if enabled else 'DISABLED'}"
-        )
-        await asyncio.sleep(5)
-        return await msg.delete()
+    silent = e.pattern_match.group(1) == "on"
 
-    # ---------- SILENT ----------
-    if arg.startswith("silent"):
-        silent = arg.endswith("on")
-        set_state("silent", silent)
-        msg = await bot.send_message(
-            e.chat_id,
-            f"🔇 Silent mode {'ON' if silent else 'OFF'}"
-        )
-        await asyncio.sleep(5)
-        return await msg.delete()
+    set_state("enabled", True)
+    set_state("silent", silent)
+
+    try:
+        await e.delete()
+    except:
+        pass
+
+    msg = await bot.send_message(
+        e.chat_id,
+        f"🛡 Anti-PM ENABLED\n🔇 Silent mode {'ON' if silent else 'OFF'}"
+    )
+    await asyncio.sleep(5)
+    await msg.delete()
+
+# =====================
+# STATUS
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.antipmstatus$"))
+async def antipm_status(e):
+    if not is_owner(e):
+        return
+
+    s = get_state()
+    total = col_users.count_documents({}) if col_users else 0
+
+    try:
+        await e.delete()
+    except:
+        pass
+
+    msg = await bot.send_message(
+        e.chat_id,
+        "🛡 **Anti-PM Status**\n\n"
+        f"• Enabled: `{s['enabled']}`\n"
+        f"• Silent: `{s['silent']}`\n"
+        f"• Tracked users: `{total}`"
+    )
+    await asyncio.sleep(8)
+    await msg.delete()
 
 # =====================
 # APPROVE
@@ -156,7 +190,11 @@ async def approve_user(e):
         "last_warn_msg": None
     })
 
-    await e.delete()
+    try:
+        await e.delete()
+    except:
+        pass
+
     msg = await bot.send_message(e.chat_id, "✅ User approved")
     await asyncio.sleep(5)
     await msg.delete()
@@ -172,22 +210,29 @@ async def disapprove_user(e):
     r = await e.get_reply_message()
     reset_user(r.sender_id)
 
-    await e.delete()
+    try:
+        await e.delete()
+    except:
+        pass
+
     msg = await bot.send_message(e.chat_id, "❌ User disapproved")
     await asyncio.sleep(5)
     await msg.delete()
 
 # =====================
-# MAIN DM HANDLER
+# MAIN HANDLER
 # =====================
 @bot.on(events.NewMessage(incoming=True))
 async def antipm_handler(e):
-    if not e.is_private or mongo is None or is_owner(e):
+    if not e.is_private or mongo is None:
+        return
+
+    if is_owner(e):
         return
 
     try:
-        state = get_state()
-        if not state["enabled"]:
+        s = get_state()
+        if not s["enabled"]:
             return
 
         sender = await e.get_sender()
@@ -199,9 +244,11 @@ async def antipm_handler(e):
         u = get_user(uid)
         now = time.time()
 
+        # APPROVED USER
         if u and u.get("approved"):
             return
 
+        # FIRST MESSAGE
         if not u:
             save_user(uid, {
                 "approved": False,
@@ -209,33 +256,57 @@ async def antipm_handler(e):
                 "msgs": [now],
                 "last_warn_msg": None
             })
-            if not state["silent"]:
+
+            if not s["silent"]:
                 await bot.send_message(
                     uid,
                     "👋 Hi!\nThis account doesn’t accept DMs.\nPlease wait or get approved."
                 )
             return
 
+        # SPAM CHECK
         msgs = [t for t in u.get("msgs", []) if now - t < SPAM_WINDOW]
         msgs.append(now)
 
         if len(msgs) >= SPAM_LIMIT:
+            old = u.get("last_warn_msg")
+            if old:
+                try:
+                    await bot.delete_messages(uid, old)
+                except:
+                    pass
+
+            if not s["silent"]:
+                await bot.send_message(uid, "🚫 Spam detected. You are blocked.")
+
+            await asyncio.sleep(1)
             await bot(BlockRequest(uid))
             reset_user(uid)
             return
 
+        # WARNINGS (REPLACE SYSTEM)
         warnings = u.get("warnings", 0) + 1
 
+        old = u.get("last_warn_msg")
+        if old:
+            try:
+                await bot.delete_messages(uid, old)
+            except:
+                pass
+
         if warnings >= WARNING_LIMIT:
+            if not s["silent"]:
+                await bot.send_message(uid, "🚫 Warning limit exceeded. Blocked.")
+            await asyncio.sleep(1)
             await bot(BlockRequest(uid))
             reset_user(uid)
             return
 
         warn_msg = None
-        if not state["silent"]:
+        if not s["silent"]:
             warn_msg = await bot.send_message(
                 uid,
-                f"⚠️ Warning {warnings}/{WARNING_LIMIT}"
+                f"⚠️ Warning {warnings}/{WARNING_LIMIT}\nPlease stop messaging."
             )
 
         save_user(uid, {

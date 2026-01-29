@@ -34,6 +34,7 @@ register_help(
     ".ai QUESTION\n"
     "(reply) .ai\n\n"
     "• Ask AI anything\n"
+    "• Uses OpenAI Responses API\n"
     "• Owner only\n"
     "• Auto delete enabled"
 )
@@ -46,12 +47,12 @@ register_explain(
     """
 🤖 **AI – Smart Assistant**
 
-.ai How does async work in Python?
+.ai What is async in Python?
 (reply) .ai
 
 • Uses OpenAI Responses API
-• Fast + stable
 • Railway compatible
+• Stable output parsing
 """
 )
 
@@ -78,11 +79,21 @@ async def ask_ai(prompt: str) -> str:
         ) as resp:
             data = await resp.json()
 
-            # ✅ SAFE PARSING (NEW API)
-            try:
-                return data["output"][0]["content"][0]["text"]
-            except Exception:
-                return "❌ AI response parse failed"
+            # ===== SAFE PARSING (ALL RESPONSE TYPES) =====
+
+            # Case 1: Direct output_text
+            if "output_text" in data and data["output_text"]:
+                return data["output_text"]
+
+            # Case 2: Structured output blocks
+            if "output" in data:
+                for block in data["output"]:
+                    for item in block.get("content", []):
+                        if item.get("type") == "output_text":
+                            return item.get("text")
+
+            # Fallback
+            return "❌ AI replied, but no readable text found"
 
 # =====================
 # AI COMMAND

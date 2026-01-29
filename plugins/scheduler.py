@@ -3,6 +3,7 @@
 import asyncio
 import re
 from datetime import datetime, timedelta
+from bson import ObjectId
 
 from telethon import events
 
@@ -24,9 +25,9 @@ mark_plugin_loaded(PLUGIN_NAME)
 print("✔ scheduler.py loaded")
 
 # =====================
-# MONGO CHECK
+# MONGO SETUP
 # =====================
-if not mongo:
+if mongo is None:
     print("⚠️ MongoDB not connected — scheduler disabled")
     col = None
 else:
@@ -51,7 +52,7 @@ register_help(
 register_explain(
     "scheduler",
     """
-⏰ **SCHEDULER v2**
+⏰ **SCHEDULER**
 
 .schedule 10m Hello  
 .schedule 2h Good night  
@@ -60,7 +61,7 @@ register_explain(
 .schedules  
 .cancelschedule ID  
 
-• Restart safe
+• Restart safe  
 • MongoDB based
 """
 )
@@ -84,10 +85,10 @@ def parse_time(text: str):
 # BACKGROUND WORKER
 # =====================
 async def scheduler_worker():
-    if not col:
+    if col is None:
         return
 
-    await asyncio.sleep(5)  # bot startup buffer
+    await asyncio.sleep(5)  # startup buffer
 
     while True:
         try:
@@ -113,15 +114,16 @@ async def scheduler_worker():
 
         await asyncio.sleep(5)
 
-# start worker
-bot.loop.create_task(scheduler_worker())
+# start worker safely
+if col is not None:
+    bot.loop.create_task(scheduler_worker())
 
 # =====================
 # .schedule
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.schedule(?:\s+([\s\S]+))?$"))
 async def schedule_cmd(e):
-    if not is_owner(e) or not col:
+    if not is_owner(e) or col is None:
         return
 
     try:
@@ -162,7 +164,7 @@ async def schedule_cmd(e):
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.schedules$"))
 async def list_schedules(e):
-    if not is_owner(e) or not col:
+    if not is_owner(e) or col is None:
         return
 
     try:
@@ -189,7 +191,7 @@ async def list_schedules(e):
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.cancelschedule(?: (.*))?$"))
 async def cancel_schedule(e):
-    if not is_owner(e) or not col:
+    if not is_owner(e) or col is None:
         return
 
     try:
@@ -200,7 +202,8 @@ async def cancel_schedule(e):
             msg = await bot.send_message(e.chat_id, "Usage:\n.cancelschedule ID")
             return await auto_delete(msg, 6)
 
-        col.delete_one({"_id": sid})
+        col.delete_one({"_id": ObjectId(sid)})
+
         msg = await bot.send_message(e.chat_id, "❌ Schedule cancelled")
         await auto_delete(msg, 6)
 

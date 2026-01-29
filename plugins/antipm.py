@@ -28,11 +28,13 @@ SPAM_LIMIT = 5          # messages
 SPAM_WINDOW = 10        # seconds
 
 # =====================
-# MONGO
+# MONGO INIT (SAFE)
 # =====================
-if not mongo:
+if mongo is None:
     print("⚠️ MongoDB not connected — antipm disabled")
     db = None
+    col_users = None
+    col_state = None
 else:
     db = mongo["userbot"]
     col_users = db["antipm_users"]
@@ -42,30 +44,44 @@ else:
 # STATE HELPERS
 # =====================
 def get_state():
-    d = col_state.find_one({"_id": "state"}) if col_state else None
-    return d or {
-        "enabled": True,
-        "silent": False
-    }
+    if col_state is None:
+        return {"enabled": True, "silent": False}
+
+    d = col_state.find_one({"_id": "state"})
+    return d or {"enabled": True, "silent": False}
+
 
 def set_state(key, value):
+    if col_state is None:
+        return
+
     col_state.update_one(
         {"_id": "state"},
         {"$set": {key: value}},
         upsert=True
     )
 
+
 def get_user(uid):
-    return col_users.find_one({"_id": uid}) if col_users else None
+    if col_users is None:
+        return None
+    return col_users.find_one({"_id": uid})
+
 
 def save_user(uid, data):
+    if col_users is None:
+        return
+
     col_users.update_one(
         {"_id": uid},
         {"$set": data},
         upsert=True
     )
 
+
 def reset_user(uid):
+    if col_users is None:
+        return
     col_users.delete_one({"_id": uid})
 
 # =====================
@@ -124,7 +140,7 @@ async def antipm_status(e):
         return
 
     s = get_state()
-    total = col_users.count_documents({}) if col_users else 0
+    total = col_users.count_documents({}) if col_users is not None else 0
 
     await e.delete()
     await bot.send_message(
@@ -172,7 +188,7 @@ async def disapprove_user(e):
 # =====================
 @bot.on(events.NewMessage(incoming=True))
 async def antipm_handler(e):
-    if not e.is_private or not mongo:
+    if not e.is_private or mongo is None:
         return
 
     if is_owner(e):
@@ -191,16 +207,13 @@ async def antipm_handler(e):
 
         u = get_user(uid)
 
-        # =====================
-        # APPROVED USER → IGNORE
-        # =====================
+        # APPROVED USER
         if u and u.get("approved"):
             return
 
         now = time.time()
 
         if not u:
-            # first message
             save_user(uid, {
                 "approved": False,
                 "warnings": 0,
@@ -214,9 +227,7 @@ async def antipm_handler(e):
                 )
             return
 
-        # =====================
         # SPAM CHECK
-        # =====================
         msgs = [t for t in u.get("msgs", []) if now - t < SPAM_WINDOW]
         msgs.append(now)
 
@@ -228,9 +239,7 @@ async def antipm_handler(e):
             reset_user(uid)
             return
 
-        # =====================
         # WARNINGS
-        # =====================
         warnings = u.get("warnings", 0) + 1
 
         if warnings >= WARNING_LIMIT:

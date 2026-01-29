@@ -25,14 +25,17 @@ mark_plugin_loaded(PLUGIN_NAME)
 print("✔ scheduler.py loaded")
 
 # =====================
-# MONGO SETUP
+# MONGO SETUP (SAFE)
 # =====================
 if mongo is None:
     print("⚠️ MongoDB not connected — scheduler disabled")
     col = None
 else:
-    db = mongo["userbot"]
-    col = db["schedules"]
+    try:
+        db = mongo["userbot"]
+        col = db["schedules"]
+    except Exception:
+        col = None
 
 # =====================
 # HELP
@@ -78,25 +81,31 @@ def parse_time(text: str):
 
     try:
         return datetime.strptime(text, "%Y-%m-%d %H:%M")
-    except:
+    except Exception:
         return None
 
 # =====================
-# BACKGROUND WORKER
+# BACKGROUND WORKER (ULTRA SAFE)
 # =====================
 async def scheduler_worker():
     if col is None:
         return
 
-    await asyncio.sleep(5)  # startup buffer
+    await asyncio.sleep(10)  # startup buffer
 
     while True:
         try:
             now = datetime.utcnow()
-            tasks = col.find({
-                "run_at": {"$lte": now},
-                "done": False
-            })
+
+            try:
+                tasks = col.find({
+                    "run_at": {"$lte": now},
+                    "done": False
+                })
+            except Exception:
+                # Mongo temporary issue → wait silently
+                await asyncio.sleep(10)
+                continue
 
             for task in tasks:
                 try:
@@ -105,11 +114,11 @@ async def scheduler_worker():
                         {"_id": task["_id"]},
                         {"$set": {"done": True}}
                     )
-                except:
-                    pass
+                except Exception:
+                    continue
 
         except Exception as ex:
-            mark_plugin_error(PLUGIN_NAME, ex)
+            # only log, do NOT break plugin
             await log_error(bot, PLUGIN_NAME, ex)
 
         await asyncio.sleep(5)
@@ -147,7 +156,14 @@ async def schedule_cmd(e):
             "created_at": datetime.utcnow()
         }
 
-        res = col.insert_one(doc)
+        try:
+            res = col.insert_one(doc)
+        except Exception:
+            msg = await bot.send_message(
+                e.chat_id,
+                "❌ MongoDB temporary unavailable. Try again."
+            )
+            return await auto_delete(msg, 6)
 
         msg = await bot.send_message(
             e.chat_id,
@@ -170,7 +186,15 @@ async def list_schedules(e):
     try:
         await e.delete()
 
-        tasks = list(col.find({"done": False}))
+        try:
+            tasks = list(col.find({"done": False}))
+        except Exception:
+            msg = await bot.send_message(
+                e.chat_id,
+                "❌ MongoDB temporary unavailable"
+            )
+            return await auto_delete(msg, 6)
+
         if not tasks:
             msg = await bot.send_message(e.chat_id, "📭 No pending schedules")
             return await auto_delete(msg, 6)
@@ -202,7 +226,14 @@ async def cancel_schedule(e):
             msg = await bot.send_message(e.chat_id, "Usage:\n.cancelschedule ID")
             return await auto_delete(msg, 6)
 
-        col.delete_one({"_id": ObjectId(sid)})
+        try:
+            col.delete_one({"_id": ObjectId(sid)})
+        except Exception:
+            msg = await bot.send_message(
+                e.chat_id,
+                "❌ Invalid ID or Mongo unavailable"
+            )
+            return await auto_delete(msg, 6)
 
         msg = await bot.send_message(e.chat_id, "❌ Schedule cancelled")
         await auto_delete(msg, 6)

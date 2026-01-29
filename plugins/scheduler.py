@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta
 
 from telethon import events
+from bson import ObjectId
 
 from userbot import bot
 from utils.owner import is_owner
@@ -24,10 +25,15 @@ mark_plugin_loaded(PLUGIN_NAME)
 print("✔ scheduler.py loaded")
 
 # =====================
-# DB
+# DB SAFE INIT
 # =====================
-db = mongo["userbot"]
-col = db["schedules"]
+if not mongo:
+    print("⚠️ MongoDB not available — scheduler disabled")
+    db = None
+    col = None
+else:
+    db = mongo["userbot"]
+    col = db["schedules"]
 
 # =====================
 # HELP REGISTER
@@ -65,16 +71,9 @@ Future me messages automatically bhejne ke liye.
 .cancelschedule ID  
 
 ━━━━━━━━━━━━━━
-📌 USE CASES:
-• Birthday wishes
-• Reminders
-• Announcements
-• Daily messages
-
-━━━━━━━━━━━━━━
-⚠️ NOTES:
+📌 NOTES:
 • MongoDB required
-• Bot restart ke baad bhi schedules safe rehte hain
+• Bot restart ke baad bhi schedules safe
 """
 )
 
@@ -97,7 +96,10 @@ def parse_time(text: str):
 # BACKGROUND WORKER
 # =====================
 async def scheduler_worker():
-    await bot.wait_until_ready()
+    await asyncio.sleep(2)  # bot ko settle hone do
+
+    if not col:
+        return
 
     while True:
         try:
@@ -117,6 +119,7 @@ async def scheduler_worker():
 
         await asyncio.sleep(5)
 
+# start worker safely
 bot.loop.create_task(scheduler_worker())
 
 # =====================
@@ -124,7 +127,7 @@ bot.loop.create_task(scheduler_worker())
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.schedule(?:\s+([\s\S]+))?$"))
 async def schedule_cmd(e):
-    if not is_owner(e):
+    if not is_owner(e) or not col:
         return
 
     try:
@@ -132,10 +135,7 @@ async def schedule_cmd(e):
 
         args = (e.pattern_match.group(1) or "").split(None, 1)
         if len(args) < 2:
-            msg = await bot.send_message(
-                e.chat_id,
-                "Usage:\n.schedule TIME TEXT"
-            )
+            msg = await bot.send_message(e.chat_id, "Usage:\n.schedule TIME TEXT")
             return await auto_delete(msg, 6)
 
         when = parse_time(args[0])
@@ -167,7 +167,7 @@ async def schedule_cmd(e):
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.schedules$"))
 async def list_schedules(e):
-    if not is_owner(e):
+    if not is_owner(e) or not col:
         return
 
     try:
@@ -194,7 +194,7 @@ async def list_schedules(e):
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.cancelschedule(?: (.*))?$"))
 async def cancel_schedule(e):
-    if not is_owner(e):
+    if not is_owner(e) or not col:
         return
 
     try:
@@ -202,13 +202,10 @@ async def cancel_schedule(e):
         sid = (e.pattern_match.group(1) or "").strip()
 
         if not sid:
-            msg = await bot.send_message(
-                e.chat_id,
-                "Usage:\n.cancelschedule ID"
-            )
+            msg = await bot.send_message(e.chat_id, "Usage:\n.cancelschedule ID")
             return await auto_delete(msg, 6)
 
-        col.delete_one({"_id": sid})
+        col.delete_one({"_id": ObjectId(sid)})
         msg = await bot.send_message(e.chat_id, "❌ Schedule cancelled")
         await auto_delete(msg, 6)
 

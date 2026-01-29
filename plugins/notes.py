@@ -1,3 +1,5 @@
+# plugins/notes.py
+
 import asyncio
 from telethon import events
 
@@ -5,13 +7,12 @@ from userbot import bot
 from utils.owner import is_owner
 from utils.logger import log_error
 from utils.help_registry import register_help
-from utils.auto_delete import auto_delete
-from database import set_note, get_note, del_note, all_notes
+from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
+from database.notes import set_note, get_note, del_note, all_notes
 
 PLUGIN_NAME = "notes.py"
 print("✔ notes.py loaded")
-
-MAX_LEN = 3500  # telegram safe
+mark_plugin_loaded(PLUGIN_NAME)
 
 # =====================
 # HELP REGISTER
@@ -19,30 +20,17 @@ MAX_LEN = 3500  # telegram safe
 register_help(
     "notes",
     ".setnote NAME TEXT\n"
-    ".setnote force NAME TEXT\n\n"
     ".getnote NAME\n"
     ".delnote NAME\n"
     ".notes\n\n"
-    "• Persistent notes (MongoDB)\n"
+    "• Notes are stored in MongoDB\n"
     "• Owner only\n"
-    "• Safe & auto delete enabled"
+    "• Auto delete enabled"
 )
 
-# =====================
-# SAFE SEND (LONG)
-# =====================
-async def send_long(chat_id, text, delete_after=15):
-    msgs = []
-    for i in range(0, len(text), MAX_LEN):
-        msg = await bot.send_message(chat_id, text[i:i + MAX_LEN])
-        msgs.append(msg)
-
-    for m in msgs:
-        await auto_delete(m, delete_after)
-
-# =====================
+# ======================
 # SET NOTE
-# =====================
+# ======================
 @bot.on(events.NewMessage(pattern=r"\.setnote(?: (.*))?$"))
 async def setnote(e):
     if not is_owner(e):
@@ -50,48 +38,27 @@ async def setnote(e):
 
     try:
         await e.delete()
-        raw = (e.pattern_match.group(1) or "").strip()
+        args = (e.pattern_match.group(1) or "").split(None, 1)
 
-        if not raw:
-            msg = await bot.send_message(
-                e.chat_id,
-                "Usage:\n.setnote NAME TEXT\n.setnote force NAME TEXT"
-            )
-            return await auto_delete(msg, 6)
+        if len(args) < 2:
+            msg = await bot.send_message(e.chat_id, "Usage:\n.setnote NAME TEXT")
+            await asyncio.sleep(6)
+            return await msg.delete()
 
-        force = False
-        if raw.startswith("force "):
-            force = True
-            raw = raw[6:]
-
-        parts = raw.split(None, 1)
-        if len(parts) < 2:
-            msg = await bot.send_message(
-                e.chat_id,
-                "Usage:\n.setnote NAME TEXT"
-            )
-            return await auto_delete(msg, 6)
-
-        name, text = parts[0], parts[1]
-
-        if get_note(name) and not force:
-            msg = await bot.send_message(
-                e.chat_id,
-                "⚠️ Note already exists\nUse `.setnote force NAME TEXT`"
-            )
-            return await auto_delete(msg, 6)
-
+        name, text = args
         set_note(name, text)
 
         msg = await bot.send_message(e.chat_id, "✅ Note saved")
-        await auto_delete(msg, 5)
+        await asyncio.sleep(5)
+        await msg.delete()
 
     except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)
 
-# =====================
+# ======================
 # GET NOTE
-# =====================
+# ======================
 @bot.on(events.NewMessage(pattern=r"\.getnote(?: (.*))?$"))
 async def getnote(e):
     if not is_owner(e):
@@ -102,25 +69,27 @@ async def getnote(e):
         name = (e.pattern_match.group(1) or "").strip()
 
         if not name:
-            msg = await bot.send_message(
-                e.chat_id,
-                "Usage:\n.getnote NAME"
-            )
-            return await auto_delete(msg, 6)
+            msg = await bot.send_message(e.chat_id, "Usage:\n.getnote NAME")
+            await asyncio.sleep(6)
+            return await msg.delete()
 
         note = get_note(name)
         if not note:
             msg = await bot.send_message(e.chat_id, "❌ Note not found")
-            return await auto_delete(msg, 5)
+            await asyncio.sleep(5)
+            return await msg.delete()
 
-        await send_long(e.chat_id, note, delete_after=15)
+        msg = await bot.send_message(e.chat_id, note)
+        await asyncio.sleep(15)
+        await msg.delete()
 
     except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)
 
-# =====================
+# ======================
 # DELETE NOTE
-# =====================
+# ======================
 @bot.on(events.NewMessage(pattern=r"\.delnote(?: (.*))?$"))
 async def delnote(e):
     if not is_owner(e):
@@ -131,27 +100,22 @@ async def delnote(e):
         name = (e.pattern_match.group(1) or "").strip()
 
         if not name:
-            msg = await bot.send_message(
-                e.chat_id,
-                "Usage:\n.delnote NAME"
-            )
-            return await auto_delete(msg, 6)
-
-        if not get_note(name):
-            msg = await bot.send_message(e.chat_id, "❌ Note not found")
-            return await auto_delete(msg, 5)
+            msg = await bot.send_message(e.chat_id, "Usage:\n.delnote NAME")
+            await asyncio.sleep(6)
+            return await msg.delete()
 
         del_note(name)
-
         msg = await bot.send_message(e.chat_id, "🗑 Note deleted")
-        await auto_delete(msg, 5)
+        await asyncio.sleep(5)
+        await msg.delete()
 
     except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)
 
-# =====================
+# ======================
 # LIST NOTES
-# =====================
+# ======================
 @bot.on(events.NewMessage(pattern=r"\.notes$"))
 async def list_notes(e):
     if not is_owner(e):
@@ -162,14 +126,20 @@ async def list_notes(e):
         notes = all_notes()
 
         if not notes:
-            msg = await bot.send_message(e.chat_id, "📭 No notes found")
-            return await auto_delete(msg, 5)
+            msg = await bot.send_message(e.chat_id, "📭 No notes saved")
+            await asyncio.sleep(6)
+            return await msg.delete()
 
-        text = "📝 **Saved Notes:**\n\n"
-        for name in sorted(notes.keys()):
-            text += f"• `{name}`\n"
+        text = "🗒 **Saved Notes**\n\n"
+        for i, name in enumerate(notes.keys(), 1):
+            text += f"{i}. `{name}`\n"
 
-        await send_long(e.chat_id, text, delete_after=15)
+        text += f"\n📊 Total: {len(notes)} notes"
+
+        msg = await bot.send_message(e.chat_id, text)
+        await asyncio.sleep(15)
+        await msg.delete()
 
     except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)

@@ -7,6 +7,7 @@ from datetime import datetime
 
 from telethon import events
 from telethon.tl import functions
+from telethon.tl.functions.users import GetFullUserRequest
 
 from userbot import bot
 from utils.owner import is_owner
@@ -16,6 +17,7 @@ from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 from utils.mongo import mongo
 
 PLUGIN_NAME = "profilecopy.py"
+
 print(f"✔ {PLUGIN_NAME} loaded")
 mark_plugin_loaded(PLUGIN_NAME)
 
@@ -58,14 +60,15 @@ async def set_name(user):
     ))
 
 async def set_bio(user):
-    bio = (await bot.get_entity(user.id)).about or ""
+    full = await bot(GetFullUserRequest(user.id))
+    bio = full.about or ""
     await bot(functions.account.UpdateProfileRequest(about=bio))
 
 async def set_dp(user):
     async for p in bot.iter_profile_photos(user.id, limit=1):
         file = await bot.download_media(p)
-        saved = await bot.send_file("me", file)
-        await bot.upload_profile_photo(saved)
+        msg = await bot.send_file("me", file)
+        await bot.upload_profile_photo(msg)
         os.remove(file)
         return True
     return False
@@ -91,14 +94,14 @@ async def copy_handler(e):
             await set_bio(user)
             text = "✅ Bio copied"
 
-        elif cmd == "copydp":
+        else:  # copydp
             ok = await set_dp(user)
             text = "✅ DP copied" if ok else "❌ User has no DP"
 
         if not SILENT_CLONE:
-            msg = await bot.send_message(e.chat_id, text)
+            m = await bot.send_message(e.chat_id, text)
             await asyncio.sleep(4)
-            await msg.delete()
+            await m.delete()
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
@@ -134,15 +137,15 @@ async def clone_cmd(e):
     CLONE_TASK = asyncio.create_task(clone_worker(user, seconds))
 
     if not SILENT_CLONE:
-        msg = await bot.send_message(
+        m = await bot.send_message(
             e.chat_id,
             f"🧬 Clone started for {seconds}s"
         )
         await asyncio.sleep(4)
-        await msg.delete()
+        await m.delete()
 
 # =====================
-# SILENT CLONE TOGGLE
+# SILENT CLONE
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.silentclone (on|off)$"))
 async def silent_clone_cmd(e):
@@ -154,33 +157,41 @@ async def silent_clone_cmd(e):
     await e.delete()
     SILENT_CLONE = e.pattern_match.group(1) == "on"
 
-    msg = await bot.send_message(
+    m = await bot.send_message(
         e.chat_id,
         "🤫 Silent clone enabled" if SILENT_CLONE else "🔊 Silent clone disabled"
     )
     await asyncio.sleep(4)
-    await msg.delete()
+    await m.delete()
 
 # =====================
 # BACKUP PROFILE
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.backupprofile(?: (force))?$"))
-from telethon.tl.functions.users import GetFullUserRequest
+async def backup_profile_cmd(e):
+    if not is_owner(e):
+        return
 
-async def backup_profile(force=False):
+    await e.delete()
+    force = bool(e.pattern_match.group(1))
+
     if profile_col.find_one({"_id": "backup"}) and not force:
-        return False
+        if not SILENT_CLONE:
+            m = await bot.send_message(e.chat_id, "⚠️ Backup already exists (use force)")
+            await asyncio.sleep(4)
+            await m.delete()
+        return
 
     me = await bot.get_me()
-
-    # ✅ BIO (correct way)
     full = await bot(GetFullUserRequest(me.id))
     bio = full.about or ""
 
-    # ✅ DP
-    dp = None
-    async for photo in bot.iter_profile_photos(me.id, limit=1):
-        dp = photo
+    dp_msg_id = None
+    async for p in bot.iter_profile_photos(me.id, limit=1):
+        file = await bot.download_media(p)
+        msg = await bot.send_file("me", file)
+        dp_msg_id = msg.id
+        os.remove(file)
         break
 
     profile_col.update_one(
@@ -189,13 +200,16 @@ async def backup_profile(force=False):
             "first_name": me.first_name,
             "last_name": me.last_name,
             "bio": bio,
-            "dp": dp.id if dp else None,
+            "dp_msg_id": dp_msg_id,
             "time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
         }},
         upsert=True
     )
 
-    return True
+    if not SILENT_CLONE:
+        m = await bot.send_message(e.chat_id, "💾 Profile backup saved")
+        await asyncio.sleep(4)
+        await m.delete()
 
 # =====================
 # RESTORE PROFILE
@@ -210,9 +224,9 @@ async def restore_profile(e):
 
     if not data:
         if not SILENT_CLONE:
-            msg = await bot.send_message(e.chat_id, "❌ No backup found")
+            m = await bot.send_message(e.chat_id, "❌ No backup found")
             await asyncio.sleep(4)
-            await msg.delete()
+            await m.delete()
         return
 
     await bot(functions.account.UpdateProfileRequest(

@@ -1,7 +1,6 @@
 # plugins/random.py
 
 import random
-import asyncio
 from telethon import events
 from telethon.tl.types import MessageEntityMention
 
@@ -25,15 +24,17 @@ print("✔ random.py loaded")
 # =====================
 register_help(
     "random",
-    ".predict\n"
-    ".8ball\n"
-    ".quote\n"
-    ".joke\n"
-    ".truth\n"
-    ".dare\n"
-    ".insult USER / TEXT (reply / @mention)\n"
-    ".compliment USER / TEXT (reply / @mention)\n\n"
-    "• Reply / mention / text based\n"
+    ".predict | .8ball | .quote | .joke\n"
+    ".truth | .dare\n"
+    ".insult USER\n"
+    ".compliment USER\n"
+    ".roast USER\n"
+    ".rate USER\n"
+    ".iq USER\n"
+    ".simp USER\n"
+    ".ship USER1 USER2\n\n"
+    "• Reply / @mention / text based\n"
+    "• Proper name mention\n"
     "• Auto delete enabled\n"
     "• Owner only"
 )
@@ -53,52 +54,74 @@ DATA = {
     "quote": [
         "Stay hungry. Stay foolish.",
         "Code > Sleep.",
-        "No risk, no story.",
         "Discipline > Motivation.",
         "Silence is also an answer."
     ],
     "joke": [
-        "Why do programmers hate nature? Too many bugs 🐛",
         "Debugging is like being a detective in your own crime scene 😂",
-        "Expectation: AI will take jobs. Reality: AI fixes typos 🤡",
-        "फोन 1% पर हो और charger दूर हो — असली डर 😭"
+        "Expectation: AI will take jobs. Reality: AI fixes typos 🤡"
     ],
     "truth": [
         "Last lie kya boli thi?",
-        "Kisi pe secretly crush hai?",
-        "Apna biggest regret batao",
-        "Sabse embarrassing moment?",
-        "Kabhi kisi ka message ignore kiya hai?"
+        "Kisi pe secretly crush hai?"
     ],
     "dare": [
-        "Apna last screenshot describe karo 😈",
-        "Next message ALL CAPS me bhejo",
-        "Kisi ko random emoji bhejo 😂",
-        "5 min tak online raho bina bole",
-        "Apni bio change kar ke dikhao"
+        "Next message ALL CAPS me bhejo 😈",
+        "5 min tak online raho bina bole"
     ],
     "insult": [
         "{target}, small brain detected 🧠",
         "{target}, skill issue 😏",
-        "{target}, Error 404: Intelligence not found",
-        "{target}, इतना confidence गलत जवाब में भी 😭",
-        "{target}, beta practice kar le 😌"
+        "{target}, Error 404: Intelligence not found"
     ],
     "compliment": [
         "{target} is a legend 🔥",
-        "{target} has king energy 👑",
-        "{target} big brain moment 🧠",
-        "Respect for {target} 💯",
-        "{target} born to win 🏆"
+        "{target} has king energy 👑"
     ],
+    "roast": [
+        "{target}, tu update ke bina software jaisa hai 🤡",
+        "{target}, tera confidence tera skill se zyada hai 😭"
+    ],
+    "simp": [
+        "{target} ke liye simping level 💯",
+        "{target} ke DM me already simp mode on 😌"
+    ]
 }
 
 # =====================
-# HANDLER
+# HELPER
 # =====================
-@bot.on(events.NewMessage(
-    pattern=r"\.(predict|8ball|quote|joke|truth|dare|insult|compliment)(?:\s+(.*))?$"
-))
+async def get_target(e, arg):
+    reply_to = None
+    target = None
+
+    if e.is_reply:
+        r = await e.get_reply_message()
+        if r and r.sender_id:
+            u = await bot.get_entity(r.sender_id)
+            target = f"[{u.first_name or 'User'}](tg://user?id={u.id})"
+            reply_to = r.id
+
+    elif e.message.entities:
+        for ent in e.message.entities:
+            if isinstance(ent, MessageEntityMention):
+                username = e.raw_text[ent.offset: ent.offset + ent.length]
+                try:
+                    u = await bot.get_entity(username)
+                    target = f"[{u.first_name or 'User'}](tg://user?id={u.id})"
+                    break
+                except:
+                    pass
+
+    if not target and arg:
+        target = arg
+
+    return target, reply_to
+
+# =====================
+# MAIN HANDLER
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.(\w+)(?:\s+(.*))?$"))
 async def random_handler(e):
     if not is_owner(e):
         return
@@ -107,56 +130,57 @@ async def random_handler(e):
         cmd = e.pattern_match.group(1)
         arg = e.pattern_match.group(2)
 
-        target = None
-        reply_to = None
-
-        # delete command
         try:
             await e.delete()
         except:
             pass
 
-        # =====================
-        # REPLY BASED
-        # =====================
-        if e.is_reply:
-            r = await e.get_reply_message()
-            if r and r.sender_id:
-                reply_to = r.id
-                target = f"[User](tg://user?id={r.sender_id})"
+        # SHIP
+        if cmd == "ship" and arg:
+            parts = arg.split(None, 1)
+            if len(parts) == 2:
+                percent = random.randint(10, 100)
+                msg = await bot.send_message(
+                    e.chat_id,
+                    f"💖 **Ship Result** 💖\n{parts[0]} ❤️ {parts[1]}\nCompatibility: {percent}%"
+                )
+                return await auto_delete(msg, 8)
 
-        # =====================
-        # @MENTION BASED
-        # =====================
-        elif e.message.entities:
-            for ent in e.message.entities:
-                if isinstance(ent, MessageEntityMention):
-                    username = e.raw_text[ent.offset: ent.offset + ent.length]
-                    try:
-                        user = await bot.get_entity(username)
-                        target = f"[User](tg://user?id={user.id})"
-                        break
-                    except:
-                        pass
+        # RATE
+        if cmd == "rate":
+            target, reply_to = await get_target(e, arg)
+            rate = random.randint(1, 10)
+            msg = await bot.send_message(
+                e.chat_id,
+                f"⭐ {target or 'You'} rating: {rate}/10",
+                reply_to=reply_to
+            )
+            return await auto_delete(msg, 6)
 
-        # =====================
-        # TEXT BASED
-        # =====================
-        if not target and arg:
-            target = arg
+        # IQ
+        if cmd == "iq":
+            target, reply_to = await get_target(e, arg)
+            iq = random.randint(50, 160)
+            msg = await bot.send_message(
+                e.chat_id,
+                f"🧠 {target or 'You'} IQ: {iq}",
+                reply_to=reply_to
+            )
+            return await auto_delete(msg, 6)
 
-        choice = random.choice(DATA[cmd])
+        # OTHER RANDOM
+        if cmd in DATA:
+            target, reply_to = await get_target(e, arg)
+            choice = random.choice(DATA[cmd])
+            if "{target}" in choice:
+                choice = choice.format(target=target or "You")
 
-        if "{target}" in choice:
-            choice = choice.format(target=target or "You")
-
-        msg = await bot.send_message(
-            e.chat_id,
-            f"🎲 {choice}",
-            reply_to=reply_to
-        )
-
-        await auto_delete(msg, 6)
+            msg = await bot.send_message(
+                e.chat_id,
+                f"🎲 {choice}",
+                reply_to=reply_to
+            )
+            return await auto_delete(msg, 6)
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)

@@ -1,10 +1,9 @@
+# plugins/fun.py
+
 import random
 import asyncio
 from telethon import events
-from telethon.tl.types import (
-    MessageEntityMention,
-    MessageEntityMentionName
-)
+from telethon.tl.types import MessageEntityMention, MessageEntityMentionName
 
 from userbot import bot
 from utils.owner import is_owner
@@ -12,10 +11,12 @@ from utils.logger import log_error
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 
+PLUGIN_NAME = "fun.py"
+
 # =====================
 # PLUGIN LOAD
 # =====================
-mark_plugin_loaded("fun.py")
+mark_plugin_loaded(PLUGIN_NAME)
 print("✔ fun.py loaded")
 
 # =====================
@@ -94,6 +95,13 @@ ACTIONS = {
 }
 
 # =====================
+# HELPER
+# =====================
+def mention_user(user):
+    name = user.first_name or "User"
+    return f"[{name}](tg://user?id={user.id})"
+
+# =====================
 # FUN HANDLER
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.(slap|hug|kiss|poke|tickle)(?:\s|$)"))
@@ -112,31 +120,35 @@ async def fun_handler(e):
         except:
             pass
 
-        actor = f"[You](tg://user?id={e.sender_id})"
+        actor = mention_user(await bot.get_entity(e.sender_id))
         target = actor
         reply_to = None
 
-        # reply based
+        # =====================
+        # REPLY BASED
+        # =====================
         if e.is_reply:
             r = await e.get_reply_message()
             if r and r.sender_id:
-                target = f"[User](tg://user?id={r.sender_id})"
+                user = await bot.get_entity(r.sender_id)
+                target = mention_user(user)
                 reply_to = r.id
 
-        # mention based
+        # =====================
+        # MENTION BASED
+        # =====================
         elif e.message.entities:
             for ent in e.message.entities:
-                # TEXT MENTION (new telethon)
                 if isinstance(ent, MessageEntityMentionName):
-                    target = f"[User](tg://user?id={ent.user_id})"
+                    user = await bot.get_entity(ent.user_id)
+                    target = mention_user(user)
                     break
 
-                # @username mention
                 if isinstance(ent, MessageEntityMention):
                     username = e.raw_text[ent.offset: ent.offset + ent.length]
                     try:
                         user = await bot.get_entity(username)
-                        target = f"[User](tg://user?id={user.id})"
+                        target = mention_user(user)
                         break
                     except:
                         pass
@@ -164,5 +176,5 @@ async def fun_handler(e):
         await msg.delete()
 
     except Exception as ex:
-        mark_plugin_error("fun.py", ex)
-        await log_error(bot, "fun.py", ex)
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)

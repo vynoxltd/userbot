@@ -1,51 +1,23 @@
 # main.py
-import os
 import asyncio
+import os
 
-from telethon import TelegramClient
-from telethon.sessions import StringSession
-
+from userbot import bot
 from loader import load_plugins
 from utils.auto_delete import auto_delete
 
-# =====================
-# ENV VARIABLES (SAFE)
-# =====================
-API_ID = os.environ.get("API_ID")
-API_HASH = os.environ.get("API_HASH")
-STRING_SESSION = os.environ.get("STRING_SESSION")
-
-if not API_ID or not API_HASH or not STRING_SESSION:
-    raise RuntimeError(
-        "❌ API_ID / API_HASH / STRING_SESSION missing in Railway env"
-    )
-
-API_ID = int(API_ID)
-
-# =====================
-# TELETHON CLIENT
-# =====================
-bot = TelegramClient(
-    StringSession(STRING_SESSION),
-    API_ID,
-    API_HASH
-)
-
-# =====================
-# MAIN STARTUP
-# =====================
 async def main():
     print("🚀 Starting userbot...")
 
-    # ✅ LOGIN FIRST
+    # 1️⃣ LOGIN FIRST
     await bot.start()
-    print("✅ Userbot logged in successfully")
+    print("✅ Userbot logged in")
 
-    # ✅ LOAD PLUGINS AFTER LOGIN
+    # 2️⃣ LOAD PLUGINS AFTER LOGIN
     load_plugins()
     print("✅ Plugins loaded")
 
-    # 🔔 restart success message (optional)
+    # 3️⃣ OPTIONAL RESTART MESSAGE
     restart_chat = os.environ.pop("RESTART_CHAT", None)
     if restart_chat:
         try:
@@ -57,9 +29,8 @@ async def main():
         except Exception as e:
             print("Restart msg failed:", e)
 
-    # ✅ KEEP PROCESS ALIVE
+    # 4️⃣ KEEP PROCESS ALIVE
     await asyncio.Event().wait()
-
 
 if __name__ == "__main__":
     asyncio.run(main())

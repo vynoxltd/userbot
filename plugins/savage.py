@@ -1,9 +1,8 @@
 # plugins/savage.py
 
 import random
-import asyncio
 from telethon import events
-from telethon.tl.types import MessageEntityMention, MessageEntityTextMention
+from telethon.tl.types import MessageEntityMention, MessageEntityMentionName
 
 from userbot import bot
 from utils.owner import is_owner
@@ -76,22 +75,24 @@ FUTURES = [
 # HELPER: GET TARGET
 # =====================
 async def get_target(e):
+    # reply based
     if e.is_reply:
         r = await e.get_reply_message()
         if r and r.sender_id:
-            return f"[User](tg://user?id={r.sender_id})", r.id
+            name = r.sender.first_name if r.sender else "User"
+            return f"[{name}](tg://user?id={r.sender_id})", r.id
 
+    # mention based
     if e.message.entities:
         for ent in e.message.entities:
-            if isinstance(ent, MessageEntityTextMention):
-                return f"[User](tg://user?id={ent.user_id})", None
+            if isinstance(ent, MessageEntityMentionName):
+                user = await bot.get_entity(ent.user_id)
+                return f"[{user.first_name}](tg://user?id={user.id})", None
+
             if isinstance(ent, MessageEntityMention):
                 username = e.raw_text[ent.offset: ent.offset + ent.length]
-                try:
-                    u = await bot.get_entity(username)
-                    return f"[User](tg://user?id={u.id})", None
-                except:
-                    pass
+                user = await bot.get_entity(username)
+                return f"[{user.first_name}](tg://user?id={user.id})", None
 
     return None, None
 
@@ -116,19 +117,17 @@ async def savage_handler(e):
 
         target, reply_to = await get_target(e)
 
-        if cmd != "chaos" and cmd != "cold" and not target:
+        if cmd not in ("chaos", "cold") and not target:
             return
 
-        # =====================
         if cmd == "roast":
             text = random.choice(ROASTS).format(t=target)
 
         elif cmd == "iq":
-            iq = random.randint(40, 180)
-            text = f"🧠 {target} ka IQ hai **{iq}**"
+            text = f"🧠 {target} ka IQ hai **{random.randint(40,180)}**"
 
         elif cmd == "ship":
-            text = f"💞 {target} + You = {random.randint(1,100)}% match"
+            text = f"💞 {target} + You = **{random.randint(1,100)}%** match"
 
         elif cmd == "future":
             text = random.choice(FUTURES).format(t=target)
@@ -158,7 +157,6 @@ async def savage_handler(e):
                 text = random.choice(HUG_ANGRY).format(t=target)
             else:
                 return
-
         else:
             return
 

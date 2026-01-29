@@ -97,7 +97,7 @@ async def get_target(e):
 # HANDLER
 # =====================
 @bot.on(events.NewMessage(
-    pattern=r"\.(roast|iq|future|gayrate|simp|kill|punch|chaos|cold|hug)(?:\s+(sad|angry))?$"
+    pattern=r"\.(roast|iq|future|gayrate|ssimp|kill|punch|chaos|cold|hug)(?:\s+(sad|angry))?$"
 ))
 async def savage_handler(e):
     if not is_owner(e):
@@ -115,7 +115,7 @@ async def savage_handler(e):
         target, reply_to = await get_target(e)
 
         # ---------- LOGIC ----------
-        if cmd in ("roast", "iq", "future", "simp", "kill", "punch", "hug") and not target:
+        if cmd in ("roast", "iq", "future", "ssimp", "kill", "punch", "hug") and not target:
             return
 
         if cmd == "roast":

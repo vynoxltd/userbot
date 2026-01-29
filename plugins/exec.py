@@ -13,12 +13,8 @@ from utils.auto_delete import auto_delete
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 
 PLUGIN_NAME = "exec.py"
-
-# =====================
-# PLUGIN LOAD
-# =====================
-mark_plugin_loaded(PLUGIN_NAME)
 print("✔ exec.py loaded")
+mark_plugin_loaded(PLUGIN_NAME)
 
 # =====================
 # HELP REGISTER
@@ -33,35 +29,52 @@ register_help(
 )
 
 # =====================
-# EXPLANATION REGISTER
+# EXPLANATION REGISTER (STRING ONLY)
 # =====================
 register_explain(
     "exec",
-    {
-        "title": "Exec – Raw Python Executor",
-        "description": (
-            "Exec plugin raw python code execute karta hai.\n"
-            "Isme koi auto return ya safety check nahi hota.\n\n"
-            "⚠️ Ye eval se zyada powerful aur zyada dangerous hai."
-        ),
-        "commands": [
-            ".exec print('Hello')",
-            ".exec await bot.send_message(event.chat_id, 'Hi')",
-            ".exec for i in range(3): print(i)"
-        ],
-        "use_cases": [
-            "Deep debugging",
-            "Direct Telegram API calls",
-            "Emergency fixes",
-            "Advanced testing"
-        ],
-        "notes": [
-            "Infinite loop bot ko hang kar sakta hai",
-            "System damage possible",
-            "Public groups me use mat karo",
-            "Eval zyada safe option hai"
-        ]
-    }
+    """
+🧠 **EXEC – Raw Python Executor**
+
+━━━━━━━━━━━━━━
+📌 PURPOSE:
+Exec plugin raw Python code execute karta hai.
+Isme koi safety check ya auto-return nahi hota.
+
+Eval ke comparison me ye zyada powerful
+aur zyada dangerous command hai.
+
+━━━━━━━━━━━━━━
+📌 COMMAND:
+.exec CODE
+
+━━━━━━━━━━━━━━
+📌 EXAMPLES:
+
+.exec print("Hello")
+➡️ Output: Hello
+
+.exec await bot.send_message(event.chat_id, "Hi")
+➡️ Chat me message send karega
+
+.exec for i in range(3):
+        print(i)
+
+━━━━━━━━━━━━━━
+📌 USE CASES:
+• Deep debugging
+• Direct Telegram API calls
+• Emergency fixes
+• Advanced testing
+
+━━━━━━━━━━━━━━
+⚠️ WARNINGS:
+• Sirf OWNER ke liye
+• Infinite loop bot ko hang kar sakta hai
+• System damage possible
+• Public groups me use mat karo
+• Eval zyada safe option hai
+"""
 )
 
 MAX_LEN = 3500  # Telegram safe limit

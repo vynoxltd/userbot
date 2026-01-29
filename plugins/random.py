@@ -1,7 +1,9 @@
+# plugins/random.py
+
 import random
 import asyncio
 from telethon import events
-from telethon.tl.types import MessageEntityMention
+from telethon.tl.types import MessageEntityMention, MessageEntityTextMention
 
 from userbot import bot
 from utils.owner import is_owner
@@ -9,10 +11,12 @@ from utils.logger import log_error
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 
+PLUGIN_NAME = "random.py"
+
 # =====================
 # PLUGIN LOAD
 # =====================
-mark_plugin_loaded("random.py")
+mark_plugin_loaded(PLUGIN_NAME)
 print("✔ random.py loaded")
 
 # =====================
@@ -26,10 +30,11 @@ register_help(
     ".joke\n"
     ".truth\n"
     ".dare\n"
-    ".insult USER / TEXT\n"
-    ".compliment USER / TEXT\n\n"
+    ".insult USER / TEXT (reply / mention)\n"
+    ".compliment USER / TEXT (reply / mention)\n\n"
     "• Reply / mention / text based\n"
-    "• Random responses"
+    "• Auto delete enabled\n"
+    "• Owner only"
 )
 
 # ======================
@@ -72,18 +77,18 @@ DATA = {
         "Apni bio change kar ke dikhao"
     ],
     "insult": [
-        "Small brain detected 🧠",
-        "Skill issue 😏",
-        "Error 404: Intelligence not found",
-        "इतना confidence गलत जवाब में भी 😭",
-        "Beta practice kar le 😌"
+        "{target}, small brain detected 🧠",
+        "{target}, skill issue 😏",
+        "{target}, Error 404: Intelligence not found",
+        "{target}, इतना confidence गलत जवाब में भी 😭",
+        "{target}, beta practice kar le 😌"
     ],
     "compliment": [
-        "Legend 🔥",
-        "King energy 👑",
-        "Big brain moment 🧠",
-        "Respect 💯",
-        "Born to win 🏆"
+        "{target} is a legend 🔥",
+        "{target} has king energy 👑",
+        "{target} big brain moment 🧠",
+        "Respect for {target} 💯",
+        "{target} born to win 🏆"
     ],
 }
 
@@ -101,22 +106,33 @@ async def random_handler(e):
         cmd = e.pattern_match.group(1)
         arg = e.pattern_match.group(2)
 
+        reply_to = None
+        target = None
+
+        # delete command
         try:
             await e.delete()
         except:
             pass
 
-        target = None
-
-        # reply based
+        # =====================
+        # REPLY BASED
+        # =====================
         if e.is_reply:
             r = await e.get_reply_message()
             if r and r.sender_id:
+                reply_to = r.id
                 target = f"[User](tg://user?id={r.sender_id})"
 
-        # mention based (@username)
+        # =====================
+        # MENTION BASED
+        # =====================
         elif e.message.entities:
             for ent in e.message.entities:
+                if isinstance(ent, MessageEntityTextMention):
+                    target = f"[User](tg://user?id={ent.user_id})"
+                    break
+
                 if isinstance(ent, MessageEntityMention):
                     username = e.raw_text[ent.offset: ent.offset + ent.length]
                     try:
@@ -126,18 +142,30 @@ async def random_handler(e):
                     except:
                         pass
 
-        # plain text target
+        # =====================
+        # TEXT BASED
+        # =====================
         if not target and arg:
             target = arg
 
         choice = random.choice(DATA[cmd])
 
-        text = f"🎲 {target} → {choice}" if target else f"🎲 {choice}"
+        # format insult / compliment
+        if "{target}" in choice:
+            choice = choice.format(target=target or "You")
 
-        msg = await bot.send_message(e.chat_id, text)
-        await asyncio.sleep(6)
+        text = f"🎲 {choice}" if cmd in ["predict", "8ball", "quote", "joke", "truth", "dare"] \
+            else f"🎲 {choice}"
+
+        msg = await bot.send_message(
+            e.chat_id,
+            text,
+            reply_to=reply_to
+        )
+
+        await asyncio.sleep(10)
         await msg.delete()
 
     except Exception as ex:
-        mark_plugin_error("random.py", ex)
-        await log_error(bot, "random.py", ex)
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)

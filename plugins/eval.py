@@ -32,31 +32,46 @@ register_help(
 # =====================
 register_explain(
     "eval",
-    {
-        "title": "Eval – Live Python Executor",
-        "description": (
-            "Eval plugin live Python code execute karta hai.\n"
-            "Ye debugging, testing aur quick experiments ke liye use hota hai.\n\n"
-            "⚠️ Extremely powerful command – sirf OWNER ke liye."
-        ),
-        "commands": [
-            ".eval 1 + 1",
-            ".eval print('Hello')",
-            ".eval await bot.get_me()",
-            ".eval for i in range(3): print(i)"
-        ],
-        "use_cases": [
-            "Bot debugging",
-            "Live variable inspection",
-            "Quick math & logic test",
-            "Telegram API experiments"
-        ],
-        "notes": [
-            "Public groups me use mat karo",
-            "Infinite loop bot ko hang kar sakta hai",
-            "Sensitive data leak ho sakta hai"
-        ]
-    }
+    """
+🧠 **EVAL – Live Python Executor**
+
+━━━━━━━━━━━━━━
+📌 PURPOSE:
+Eval plugin live Python code execute karta hai.
+Ye debugging, testing aur quick experiments ke liye use hota hai.
+
+━━━━━━━━━━━━━━
+📌 COMMAND:
+.eval CODE
+
+━━━━━━━━━━━━━━
+📌 EXAMPLES:
+
+.eval 1 + 1
+➡️ Output: 2
+
+.eval print("Hello")
+➡️ Output: Hello
+
+.eval await bot.get_me()
+➡️ Telegram user object return karega
+
+.eval for i in range(3):
+        print(i)
+
+━━━━━━━━━━━━━━
+📌 USE CASES:
+• Bot debugging
+• Live variable inspection
+• Quick math & logic testing
+• Telegram API experiments
+
+━━━━━━━━━━━━━━
+⚠️ WARNINGS:
+• Sirf OWNER ke liye
+• Infinite loop bot ko hang kar sakta hai
+• Public groups me use mat karo
+"""
 )
 
 MAX_LEN = 3500  # Telegram safe limit

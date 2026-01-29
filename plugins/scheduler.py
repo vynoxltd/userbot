@@ -5,7 +5,6 @@ import re
 from datetime import datetime, timedelta
 
 from telethon import events
-from bson import ObjectId
 
 from userbot import bot
 from utils.owner import is_owner
@@ -25,43 +24,34 @@ mark_plugin_loaded(PLUGIN_NAME)
 print("✔ scheduler.py loaded")
 
 # =====================
-# DB SAFE INIT
+# MONGO CHECK
 # =====================
 if not mongo:
-    print("⚠️ MongoDB not available — scheduler disabled")
-    db = None
+    print("⚠️ MongoDB not connected — scheduler disabled")
     col = None
 else:
     db = mongo["userbot"]
     col = db["schedules"]
 
 # =====================
-# HELP REGISTER
+# HELP
 # =====================
 register_help(
     "scheduler",
     ".schedule TIME TEXT\n"
     ".schedules\n"
     ".cancelschedule ID\n\n"
-    "• Schedule messages\n"
-    "• Persistent (MongoDB)\n"
+    "• Persistent scheduler (MongoDB)\n"
     "• Owner only"
 )
 
 # =====================
-# EXPLANATION REGISTER
+# EXPLAIN
 # =====================
 register_explain(
     "scheduler",
     """
-⏰ **SCHEDULER – Message Scheduler**
-
-━━━━━━━━━━━━━━
-📌 PURPOSE:
-Future me messages automatically bhejne ke liye.
-
-━━━━━━━━━━━━━━
-📌 COMMANDS:
+⏰ **SCHEDULER v2**
 
 .schedule 10m Hello  
 .schedule 2h Good night  
@@ -70,10 +60,8 @@ Future me messages automatically bhejne ke liye.
 .schedules  
 .cancelschedule ID  
 
-━━━━━━━━━━━━━━
-📌 NOTES:
-• MongoDB required
-• Bot restart ke baad bhi schedules safe
+• Restart safe
+• MongoDB based
 """
 )
 
@@ -81,10 +69,10 @@ Future me messages automatically bhejne ke liye.
 # TIME PARSER
 # =====================
 def parse_time(text: str):
-    if re.match(r"^\d+m$", text):
+    if re.fullmatch(r"\d+m", text):
         return datetime.utcnow() + timedelta(minutes=int(text[:-1]))
 
-    if re.match(r"^\d+h$", text):
+    if re.fullmatch(r"\d+h", text):
         return datetime.utcnow() + timedelta(hours=int(text[:-1]))
 
     try:
@@ -96,22 +84,28 @@ def parse_time(text: str):
 # BACKGROUND WORKER
 # =====================
 async def scheduler_worker():
-    await asyncio.sleep(2)  # bot ko settle hone do
-
     if not col:
         return
+
+    await asyncio.sleep(5)  # bot startup buffer
 
     while True:
         try:
             now = datetime.utcnow()
-            tasks = col.find({"run_at": {"$lte": now}, "done": False})
+            tasks = col.find({
+                "run_at": {"$lte": now},
+                "done": False
+            })
 
             for task in tasks:
-                await bot.send_message(task["chat_id"], task["text"])
-                col.update_one(
-                    {"_id": task["_id"]},
-                    {"$set": {"done": True}}
-                )
+                try:
+                    await bot.send_message(task["chat_id"], task["text"])
+                    col.update_one(
+                        {"_id": task["_id"]},
+                        {"$set": {"done": True}}
+                    )
+                except:
+                    pass
 
         except Exception as ex:
             mark_plugin_error(PLUGIN_NAME, ex)
@@ -119,7 +113,7 @@ async def scheduler_worker():
 
         await asyncio.sleep(5)
 
-# start worker safely
+# start worker
 bot.loop.create_task(scheduler_worker())
 
 # =====================
@@ -147,14 +141,15 @@ async def schedule_cmd(e):
             "chat_id": e.chat_id,
             "text": args[1],
             "run_at": when,
-            "done": False
+            "done": False,
+            "created_at": datetime.utcnow()
         }
 
         res = col.insert_one(doc)
 
         msg = await bot.send_message(
             e.chat_id,
-            f"⏰ Scheduled\nID: `{res.inserted_id}`\nAt: `{when}`"
+            f"⏰ **Scheduled**\nID: `{res.inserted_id}`\nAt: `{when}`"
         )
         await auto_delete(msg, 8)
 
@@ -199,13 +194,13 @@ async def cancel_schedule(e):
 
     try:
         await e.delete()
-        sid = (e.pattern_match.group(1) or "").strip()
 
+        sid = (e.pattern_match.group(1) or "").strip()
         if not sid:
             msg = await bot.send_message(e.chat_id, "Usage:\n.cancelschedule ID")
             return await auto_delete(msg, 6)
 
-        col.delete_one({"_id": ObjectId(sid)})
+        col.delete_one({"_id": sid})
         msg = await bot.send_message(e.chat_id, "❌ Schedule cancelled")
         await auto_delete(msg, 6)
 

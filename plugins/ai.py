@@ -2,7 +2,6 @@
 
 import os
 import aiohttp
-import asyncio
 from telethon import events
 
 from userbot import bot
@@ -25,68 +24,49 @@ print("✔ ai.py loaded")
 # CONFIG
 # =====================
 AI_API_KEY = os.getenv("AI_API_KEY")
-AI_API_URL = "https://api.openai.com/v1/chat/completions"
+AI_API_URL = "https://api.openai.com/v1/responses"
 
 # =====================
-# HELP REGISTER
+# HELP
 # =====================
 register_help(
     "ai",
-    ".ai QUESTION\n\n"
+    ".ai QUESTION\n"
+    "(reply) .ai\n\n"
     "• Ask AI anything\n"
-    "• Reply supported\n"
     "• Owner only\n"
     "• Auto delete enabled"
 )
 
 # =====================
-# EXPLANATION REGISTER
+# EXPLAIN
 # =====================
 register_explain(
     "ai",
     """
 🤖 **AI – Smart Assistant**
 
-━━━━━━━━━━━━━━
-📌 PURPOSE:
-AI plugin tumhe live questions ka answer deta hai.
+.ai How does async work in Python?
+(reply) .ai
 
-━━━━━━━━━━━━━━
-📌 COMMAND:
-.ai QUESTION  
-(reply) .ai  
-
-━━━━━━━━━━━━━━
-📌 USE CASES:
-• Coding help
-• Debugging logic
-• Explanations
-• Idea generation
-
-━━━━━━━━━━━━━━
-⚠️ NOTES:
-• API key required
-• Internet needed
-• Heavy queries slow ho sakte hain
+• Uses OpenAI Responses API
+• Fast + stable
+• Railway compatible
 """
 )
 
 # =====================
 # AI REQUEST
 # =====================
-async def ask_ai(prompt: str):
+async def ask_ai(prompt: str) -> str:
     headers = {
         "Authorization": f"Bearer {AI_API_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     payload = {
-        "model": "gpt-3.5-turbo",
-        " shows_typing": False,
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt}
-        ]
+        "model": "gpt-5-nano",
+        "input": prompt
     }
 
     async with aiohttp.ClientSession() as session:
@@ -94,10 +74,15 @@ async def ask_ai(prompt: str):
             AI_API_URL,
             headers=headers,
             json=payload,
-            timeout=60
+            timeout=90
         ) as resp:
             data = await resp.json()
-            return data["choices"][0]["message"]["content"]
+
+            # ✅ SAFE PARSING (NEW API)
+            try:
+                return data["output"][0]["content"][0]["text"]
+            except Exception:
+                return "❌ AI response parse failed"
 
 # =====================
 # AI COMMAND
@@ -110,7 +95,7 @@ async def ai_cmd(e):
     if not AI_API_KEY:
         msg = await bot.send_message(
             e.chat_id,
-            "❌ AI_API_KEY not set"
+            "❌ AI_API_KEY not set in environment"
         )
         return await auto_delete(msg, 6)
 
@@ -135,7 +120,7 @@ async def ai_cmd(e):
             return await auto_delete(msg, 6)
 
         thinking = await bot.send_message(e.chat_id, "🤖 Thinking...")
-        
+
         answer = await ask_ai(text)
 
         await thinking.delete()
@@ -145,7 +130,7 @@ async def ai_cmd(e):
             f"🤖 **AI Answer**\n\n{answer}"
         )
 
-        await auto_delete(msg, 20)
+        await auto_delete(msg, 25)
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)

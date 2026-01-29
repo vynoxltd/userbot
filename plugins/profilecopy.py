@@ -1,5 +1,3 @@
-# plugins/profilecopy.py
-
 import os
 import time
 import asyncio
@@ -8,6 +6,7 @@ from datetime import datetime
 from telethon import events
 from telethon.tl import functions
 from telethon.tl.functions.users import GetFullUserRequest
+from telethon.tl.functions.photos import UploadProfilePhotoRequest
 
 from userbot import bot
 from utils.owner import is_owner
@@ -63,11 +62,21 @@ async def set_bio(user):
     bio = full.full_user.about or ""
     await bot(functions.account.UpdateProfileRequest(about=bio))
 
+async def set_dp_from_message(msg):
+    file_path = await bot.download_media(msg)
+    if not file_path:
+        return False
+
+    uploaded = await bot.upload_file(file_path)
+    await bot(UploadProfilePhotoRequest(file=uploaded))
+    os.remove(file_path)
+    return True
+
 async def set_dp(user):
     async for p in bot.iter_profile_photos(user.id, limit=1):
         file = await bot.download_media(p)
-        msg = await bot.send_file("me", file)
-        await bot.upload_profile_photo(msg)
+        uploaded = await bot.upload_file(file)
+        await bot(UploadProfilePhotoRequest(file=uploaded))
         os.remove(file)
         return True
     return False
@@ -93,7 +102,7 @@ async def copy_handler(e):
             await set_bio(user)
             text = "✅ Bio copied"
 
-        else:  # copydp
+        else:
             ok = await set_dp(user)
             text = "✅ DP copied" if ok else "❌ User has no DP"
 
@@ -173,7 +182,7 @@ async def backup_profile_cmd(e):
 
     if profile_col.find_one({"_id": "backup"}) and not force:
         if not SILENT_CLONE:
-            m = await bot.send_message(e.chat_id, "⚠️ Backup already exists (use force)")
+            m = await bot.send_message(e.chat_id, "⚠️ Backup exists (use force)")
             await asyncio.sleep(4)
             await m.delete()
         return
@@ -233,7 +242,7 @@ async def restore_profile(e):
 
     if data.get("dp_msg_id"):
         msg = await bot.get_messages("me", ids=data["dp_msg_id"])
-        await bot.upload_profile_photo(msg)
+        await set_dp_from_message(msg)
 
     if not SILENT_CLONE:
         m = await bot.send_message(e.chat_id, "♻️ Profile restored")

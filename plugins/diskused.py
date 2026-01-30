@@ -38,7 +38,8 @@ CHECK_FOLDERS = [
     "assets",
     "utils",
     "data",
-    "plugins"
+    "plugins",
+    "downloads"
 ]
 
 # =====================

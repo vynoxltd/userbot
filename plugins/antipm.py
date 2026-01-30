@@ -10,7 +10,7 @@ from utils.owner import is_owner
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 from utils.logger import log_error
-from utils.mongo import mongo
+from utils.local_store import load_json, save_json   # ✅ LOCAL STORAGE
 
 PLUGIN_NAME = "antipm.py"
 
@@ -18,7 +18,7 @@ PLUGIN_NAME = "antipm.py"
 # PLUGIN LOAD
 # =====================
 mark_plugin_loaded(PLUGIN_NAME)
-print("✔ antipm.py loaded")
+print("✔ antipm.py loaded (local storage mode)")
 
 # =====================
 # CONFIG
@@ -27,69 +27,42 @@ WARNING_LIMIT = 3
 SPAM_LIMIT = 5
 SPAM_WINDOW = 10  # seconds
 
-# =====================
-# MONGO INIT (SAFE)
-# =====================
-if mongo is None:
-    col_users = None
-    col_state = None
-else:
-    db = mongo["userbot"]
-    col_users = db["antipm_users"]
-    col_state = db["antipm_state"]
+STATE_FILE = "data/antipm_state.json"
+USERS_FILE = "data/antipm_users.json"
 
 # =====================
-# STATE HELPERS
+# LOAD DATA
 # =====================
-def get_state():
-    base = {"enabled": True, "silent": False}
+STATE = load_json(STATE_FILE, {
+    "enabled": True,
+    "silent": False
+})
 
-    if col_state is None:
-        return base
+USERS = load_json(USERS_FILE, {})
 
-    data = col_state.find_one({"_id": "state"}) or {}
-    base.update(data)
+# =====================
+# HELPERS
+# =====================
+def save_state():
+    save_json(STATE_FILE, STATE)
 
-    col_state.update_one(
-        {"_id": "state"},
-        {"$set": base},
-        upsert=True
-    )
-    return base
-
-
-def set_state(key, value):
-    if col_state is not None:
-        col_state.update_one(
-            {"_id": "state"},
-            {"$set": {key: value}},
-            upsert=True
-        )
-
+def save_users():
+    save_json(USERS_FILE, USERS)
 
 def get_user(uid):
-    return col_users.find_one({"_id": uid}) if col_users is not None else None
-
-
-def save_user(uid, data):
-    if col_users is not None:
-        col_users.update_one(
-            {"_id": uid},
-            {"$set": data},
-            upsert=True
-        )
-
+    return USERS.get(str(uid))
 
 def reset_user(uid):
-    if col_users is not None:
-        col_users.delete_one({"_id": uid})
-
+    USERS.pop(str(uid), None)
+    save_users()
 
 async def resolve_user(e):
+    # reply
     if e.is_reply:
         r = await e.get_reply_message()
         return r.sender_id
 
+    # username / id
     arg = e.pattern_match.group(1)
     if not arg:
         return None
@@ -113,7 +86,7 @@ register_help(
     ".approve (reply / user / id)\n"
     ".disapprove (reply / user / id)\n"
     ".resetwarn (reply / user / id)\n\n"
-    "• MongoDB based Anti-PM\n"
+    "• Local disk based (NO Mongo)\n"
     "• Warning replace system\n"
     "• Spam detection\n"
     "• DM only"
@@ -127,13 +100,13 @@ async def toggle_antipm(e):
     if not is_owner(e):
         return
 
-    state = e.pattern_match.group(1) == "on"
-    set_state("enabled", state)
+    STATE["enabled"] = e.pattern_match.group(1) == "on"
+    save_state()
 
     await e.delete()
     msg = await bot.send_message(
         e.chat_id,
-        f"🛡 Anti-PM {'ENABLED' if state else 'DISABLED'}"
+        f"🛡 Anti-PM {'ENABLED' if STATE['enabled'] else 'DISABLED'}"
     )
     await asyncio.sleep(5)
     await msg.delete()
@@ -146,14 +119,14 @@ async def toggle_silent(e):
     if not is_owner(e):
         return
 
-    silent = e.pattern_match.group(1) == "on"
-    set_state("enabled", True)
-    set_state("silent", silent)
+    STATE["enabled"] = True
+    STATE["silent"] = e.pattern_match.group(1) == "on"
+    save_state()
 
     await e.delete()
     msg = await bot.send_message(
         e.chat_id,
-        f"🛡 Anti-PM ENABLED\n🔇 Silent mode {'ON' if silent else 'OFF'}"
+        f"🛡 Anti-PM ENABLED\n🔇 Silent mode {'ON' if STATE['silent'] else 'OFF'}"
     )
     await asyncio.sleep(5)
     await msg.delete()
@@ -166,16 +139,13 @@ async def antipm_status(e):
     if not is_owner(e):
         return
 
-    s = get_state()
-    total = col_users.count_documents({}) if col_users is not None else 0
-
     await e.delete()
     msg = await bot.send_message(
         e.chat_id,
         "🛡 **Anti-PM Status**\n\n"
-        f"• Enabled: `{s['enabled']}`\n"
-        f"• Silent: `{s['silent']}`\n"
-        f"• Tracked users: `{total}`"
+        f"• Enabled: `{STATE['enabled']}`\n"
+        f"• Silent: `{STATE['silent']}`\n"
+        f"• Tracked users: `{len(USERS)}`"
     )
     await asyncio.sleep(8)
     await msg.delete()
@@ -192,12 +162,13 @@ async def approve_user(e):
     if not uid:
         return
 
-    save_user(uid, {
+    USERS[str(uid)] = {
         "approved": True,
         "warnings": 0,
         "msgs": [],
         "last_warn_msg": None
-    })
+    }
+    save_users()
 
     await e.delete()
     msg = await bot.send_message(e.chat_id, "✅ User approved")
@@ -235,12 +206,13 @@ async def reset_warning(e):
     if not uid:
         return
 
-    save_user(uid, {
+    USERS[str(uid)] = {
         "approved": False,
         "warnings": 0,
         "msgs": [],
         "last_warn_msg": None
-    })
+    }
+    save_users()
 
     await e.delete()
     msg = await bot.send_message(e.chat_id, "🔄 Warnings reset")
@@ -252,14 +224,11 @@ async def reset_warning(e):
 # =====================
 @bot.on(events.NewMessage(incoming=True))
 async def antipm_handler(e):
-    if not e.is_private or mongo is None:
-        return
-    if is_owner(e):
+    if not e.is_private or is_owner(e):
         return
 
     try:
-        s = get_state()
-        if not s["enabled"]:
+        if not STATE["enabled"]:
             return
 
         sender = await e.get_sender()
@@ -268,65 +237,75 @@ async def antipm_handler(e):
         if sender.bot or sender.verified:
             return
 
-        u = get_user(uid)
+        u = USERS.get(str(uid))
         now = time.time()
 
+        # approved
         if u and u.get("approved"):
             return
 
+        # first message
         if not u:
-            save_user(uid, {
+            USERS[str(uid)] = {
                 "approved": False,
                 "warnings": 0,
                 "msgs": [now],
                 "last_warn_msg": None
-            })
-            if not s["silent"]:
+            }
+            save_users()
+
+            if not STATE["silent"]:
                 await bot.send_message(
                     uid,
                     "👋 Hi!\nDMs are restricted.\nPlease wait or get approved."
                 )
             return
 
-        msgs = [t for t in u.get("msgs", []) if now - t < SPAM_WINDOW]
+        # spam check
+        msgs = [t for t in u["msgs"] if now - t < SPAM_WINDOW]
         msgs.append(now)
 
         if len(msgs) >= SPAM_LIMIT:
             if u.get("last_warn_msg"):
                 await bot.delete_messages(uid, u["last_warn_msg"])
-            if not s["silent"]:
+
+            if not STATE["silent"]:
                 await bot.send_message(uid, "🚫 Spam detected. You are blocked.")
+
             await asyncio.sleep(1)
             await bot(BlockRequest(uid))
             reset_user(uid)
             return
 
-        warnings = u.get("warnings", 0) + 1
+        # warnings
+        warnings = u["warnings"] + 1
 
         if u.get("last_warn_msg"):
             await bot.delete_messages(uid, u["last_warn_msg"])
 
         if warnings >= WARNING_LIMIT:
-            if not s["silent"]:
+            if not STATE["silent"]:
                 await bot.send_message(uid, "🚫 Warning limit exceeded. Blocked.")
+
             await asyncio.sleep(1)
             await bot(BlockRequest(uid))
             reset_user(uid)
             return
 
         warn_msg = None
-        if not s["silent"]:
+        if not STATE["silent"]:
             warn_msg = await bot.send_message(
                 uid,
                 f"⚠️ Warning {warnings}/{WARNING_LIMIT}\nPlease stop messaging."
             )
 
-        save_user(uid, {
+        USERS[str(uid)] = {
             "approved": False,
             "warnings": warnings,
             "msgs": msgs,
             "last_warn_msg": warn_msg.id if warn_msg else None
-        })
+        }
+        save_users()
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)

@@ -5,7 +5,20 @@ FILE = "utils/antipm_data.json"
 
 def _load():
     if not os.path.exists(FILE):
-        return {"state": {"enabled": True, "silent": False}, "users": {}}
+        data = {
+            "state": {
+                "enabled": False,      # ❗ default OFF
+                "silent": False,
+                "mode": "block",
+                "mute_time": None,
+                "last_blocked_user": None,
+                "last_warning_time": None
+            },
+            "users": {}
+        }
+        _save(data)
+        return data
+
     with open(FILE, "r") as f:
         return json.load(f)
 

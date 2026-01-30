@@ -1,12 +1,14 @@
 # plugins/moderation.py
 
-import re
-import json
+import time
 import asyncio
-from datetime import timedelta
+from datetime import datetime
+
 from telethon import events
-from telethon.tl.functions.contacts import BlockRequest
-from telethon.tl.functions.channels import EditBannedRequest
+from telethon.tl.functions.channels import (
+    EditBannedRequest,
+    GetParticipantRequest
+)
 from telethon.tl.types import ChatBannedRights
 
 from userbot import bot
@@ -15,8 +17,11 @@ from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 from utils.logger import log_error
 
+import json
+import os
+
 PLUGIN_NAME = "moderation.py"
-DATA_FILE = "data/moderation.json"
+DATA_FILE = "utils/moderation_data.json"
 
 # =====================
 # LOAD
@@ -25,14 +30,13 @@ mark_plugin_loaded(PLUGIN_NAME)
 print("✔ moderation.py loaded")
 
 # =====================
-# DATA STORE
+# STORAGE
 # =====================
 def load():
-    try:
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return {"gmute": {}, "gban": {}, "block": {}}
+    if not os.path.exists(DATA_FILE):
+        return {"mutes": {}, "gmutes": {}, "bans": {}, "gbans": {}}
+    with open(DATA_FILE, "r") as f:
+        return json.load(f)
 
 def save(d):
     with open(DATA_FILE, "w") as f:
@@ -41,183 +45,188 @@ def save(d):
 DATA = load()
 
 # =====================
-# HELP
-# =====================
-register_help(
-    "moderation",
-    ".block (reply/user/id) [reason]\n"
-    ".unblock (reply/user/id)\n"
-    ".blocklist\n\n"
-    ".gmute [time] (reply/user/id) [reason]\n"
-    ".ungmute (reply/user/id)\n"
-    ".gmutelist\n\n"
-    ".gban (reply/user/id) [reason]\n"
-    ".ungban (reply/user/id)\n"
-    ".gbanlist\n\n"
-    "Time: 10m / 1h / 1d\n"
-    "• Group admin rights required"
-)
-
-# =====================
-# RIGHTS
-# =====================
-MUTE = ChatBannedRights(send_messages=True)
-UNMUTE = ChatBannedRights(send_messages=False)
-BAN = ChatBannedRights(view_messages=True)
-UNBAN = ChatBannedRights(view_messages=False)
-
-# =====================
 # UTILS
 # =====================
+def ts():
+    return int(time.time())
+
 def parse_time(t):
     if not t:
         return None
-    m = re.match(r"(\d+)(m|h|d)", t)
-    if not m:
-        return None
-    v, u = int(m.group(1)), m.group(2)
+    unit = t[-1]
+    num = int(t[:-1])
     return (
-        timedelta(minutes=v) if u == "m" else
-        timedelta(hours=v) if u == "h" else
-        timedelta(days=v)
+        num * 60 if unit == "m" else
+        num * 3600 if unit == "h" else
+        num * 86400 if unit == "d" else None
     )
 
 async def resolve_user(e):
     if e.is_reply:
         r = await e.get_reply_message()
         return r.sender_id
-    arg = e.pattern_match.group(2)
+    arg = (e.pattern_match.group(1) or "").strip()
     if not arg:
         return None
+    if arg.isdigit():
+        return int(arg)
+    u = await bot.get_entity(arg)
+    return u.id
+
+async def is_admin(chat, uid):
     try:
-        return int(arg) if arg.isdigit() else (await bot.get_entity(arg)).id
+        p = await bot(GetParticipantRequest(chat, uid))
+        return p.participant.admin_rights or p.participant.creator
     except:
-        return None
+        return False
 
 # =====================
-# BLOCK / UNBLOCK (DM)
+# HELP
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.block(?:\s+(.+))?$"))
-async def block_user(e):
-    if not is_owner(e):
-        return
-    try:
-        uid = await resolve_user(e)
-        reason = e.pattern_match.group(1) or "No reason"
-        if not uid:
-            return
-        await bot(BlockRequest(uid))
-        DATA["block"][str(uid)] = reason
-        save(DATA)
-        await e.delete()
-    except Exception as ex:
-        await log_error(bot, PLUGIN_NAME, ex)
-
-@bot.on(events.NewMessage(pattern=r"\.unblock(?:\s+(.+))?$"))
-async def unblock_user(e):
-    if not is_owner(e):
-        return
-    uid = await resolve_user(e)
-    if uid:
-        DATA["block"].pop(str(uid), None)
-        save(DATA)
-        await bot(BlockRequest(uid, False))
-        await e.delete()
-
-@bot.on(events.NewMessage(pattern=r"\.blocklist$"))
-async def blocklist(e):
-    if not is_owner(e):
-        return
-    text = "🚫 **Blocked Users**\n\n"
-    for u, r in DATA["block"].items():
-        text += f"• `{u}` → {r}\n"
-    await e.delete()
-    await bot.send_message(e.chat_id, text or "No blocked users")
+register_help(
+    "moderation",
+    ".block / .unblock (reply/user/id)\n"
+    ".mute [10m|1h|1d] (reply)\n"
+    ".unmute (reply)\n"
+    ".gmute / .ungmute\n"
+    ".ban / .unban\n"
+    ".gban / .ungban\n"
+    ".mutelist / .gmutelist\n\n"
+    "• Time + permanent mute\n"
+    "• Reason supported\n"
+    "• Group + global moderation"
+)
 
 # =====================
-# GMUTE
+# RIGHTS
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.gmute(?:\s+(\d+[mhd]))?(?:\s+(.+))?$"))
-async def gmute(e):
-    if not is_owner(e) or not e.is_group:
+MUTE_RIGHTS = ChatBannedRights(
+    until_date=None,
+    send_messages=True
+)
+
+UNMUTE_RIGHTS = ChatBannedRights(
+    until_date=None,
+    send_messages=False
+)
+
+# =====================
+# MUTE
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.mute(?: (\S+))?(?: (.*))?$"))
+async def mute_user(e):
+    if not e.is_group or not await is_admin(e.chat_id, e.sender_id):
         return
+
     uid = await resolve_user(e)
     if not uid:
         return
 
-    delta = parse_time(e.pattern_match.group(1))
+    duration = parse_time(e.pattern_match.group(1))
     reason = e.pattern_match.group(2) or "No reason"
-    until = int((e.date + delta).timestamp()) if delta else None
 
-    rights = ChatBannedRights(
-        until_date=until,
-        send_messages=True
-    )
+    until = ts() + duration if duration else None
 
-    await bot(EditBannedRequest(e.chat_id, uid, rights))
-
-    DATA["gmute"][str(uid)] = {
-        "chat": e.chat_id,
+    DATA["mutes"][f"{e.chat_id}:{uid}"] = {
         "until": until,
         "reason": reason
     }
     save(DATA)
-    await e.delete()
 
-@bot.on(events.NewMessage(pattern=r"\.ungmute(?:\s+(.+))?$"))
-async def ungmute(e):
-    if not is_owner(e) or not e.is_group:
+    await bot(EditBannedRequest(e.chat_id, uid, MUTE_RIGHTS))
+    await e.reply("🔇 User muted")
+
+# =====================
+# UNMUTE
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.unmute(?: (.*))?$"))
+async def unmute_user(e):
+    if not e.is_group or not await is_admin(e.chat_id, e.sender_id):
         return
-    uid = await resolve_user(e)
-    if uid:
-        DATA["gmute"].pop(str(uid), None)
-        save(DATA)
-        await bot(EditBannedRequest(e.chat_id, uid, UNMUTE))
-        await e.delete()
 
-@bot.on(events.NewMessage(pattern=r"\.gmutelist$"))
-async def gmutelist(e):
+    uid = await resolve_user(e)
+    if not uid:
+        return
+
+    DATA["mutes"].pop(f"{e.chat_id}:{uid}", None)
+    save(DATA)
+
+    await bot(EditBannedRequest(e.chat_id, uid, UNMUTE_RIGHTS))
+    await e.reply("🔊 User unmuted")
+
+# =====================
+# GMUTE
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.gmute(?: (.*))?$"))
+async def gmute(e):
     if not is_owner(e):
         return
-    text = "🔇 **Muted Users**\n\n"
-    for u, d in DATA["gmute"].items():
-        text += f"• `{u}` → {d['reason']}\n"
-    await e.delete()
-    await bot.send_message(e.chat_id, text or "No muted users")
+
+    uid = await resolve_user(e)
+    DATA["gmutes"][str(uid)] = {"time": ts()}
+    save(DATA)
+    await e.reply("🔕 Global mute applied")
+
+@bot.on(events.NewMessage(pattern=r"\.ungmute(?: (.*))?$"))
+async def ungmute(e):
+    if not is_owner(e):
+        return
+
+    uid = await resolve_user(e)
+    DATA["gmutes"].pop(str(uid), None)
+    save(DATA)
+    await e.reply("🔔 Global mute removed")
 
 # =====================
 # GBAN
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.gban(?:\s+(.+))?$"))
+@bot.on(events.NewMessage(pattern=r"\.gban(?: (.*))?$"))
 async def gban(e):
-    if not is_owner(e) or not e.is_group:
-        return
-    uid = await resolve_user(e)
-    reason = e.pattern_match.group(1) or "No reason"
-    if not uid:
-        return
-    await bot(EditBannedRequest(e.chat_id, uid, BAN))
-    DATA["gban"][str(uid)] = reason
-    save(DATA)
-    await e.delete()
-
-@bot.on(events.NewMessage(pattern=r"\.ungban(?:\s+(.+))?$"))
-async def ungban(e):
-    if not is_owner(e) or not e.is_group:
-        return
-    uid = await resolve_user(e)
-    if uid:
-        DATA["gban"].pop(str(uid), None)
-        save(DATA)
-        await bot(EditBannedRequest(e.chat_id, uid, UNBAN))
-        await e.delete()
-
-@bot.on(events.NewMessage(pattern=r"\.gbanlist$"))
-async def gbanlist(e):
     if not is_owner(e):
         return
-    text = "⛔ **Group Banned Users**\n\n"
-    for u, r in DATA["gban"].items():
-        text += f"• `{u}` → {r}\n"
-    await e.delete()
-    await bot.send_message(e.chat_id, text or "No banned users")
+
+    uid = await resolve_user(e)
+    DATA["gbans"][str(uid)] = {"time": ts()}
+    save(DATA)
+    await e.reply("🚫 Global ban applied")
+
+@bot.on(events.NewMessage(pattern=r"\.ungban(?: (.*))?$"))
+async def ungban(e):
+    if not is_owner(e):
+        return
+
+    uid = await resolve_user(e)
+    DATA["gbans"].pop(str(uid), None)
+    save(DATA)
+    await e.reply("✅ Global ban removed")
+
+# =====================
+# WATCHER (AUTO)
+# =====================
+@bot.on(events.NewMessage(incoming=True))
+async def moderation_watcher(e):
+    try:
+        uid = e.sender_id
+
+        if str(uid) in DATA["gbans"]:
+            await e.delete()
+            return
+
+        if str(uid) in DATA["gmutes"]:
+            await e.delete()
+            return
+
+        key = f"{e.chat_id}:{uid}"
+        mute = DATA["mutes"].get(key)
+
+        if mute:
+            if mute["until"] and ts() > mute["until"]:
+                DATA["mutes"].pop(key, None)
+                save(DATA)
+                await bot(EditBannedRequest(e.chat_id, uid, UNMUTE_RIGHTS))
+            else:
+                await e.delete()
+
+    except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)

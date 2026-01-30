@@ -223,6 +223,41 @@ async def ungban(e):
     await asyncio.sleep(6)
     await msg.delete()
     await e.delete()
+# =====================
+# GBAN INFO
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.gbaninfo(?: (.*))?$"))
+async def gbaninfo(e):
+    if not is_owner(e):
+        return
+
+    uid = await resolve_user(e)
+    if not uid:
+        return
+
+    data = DATA["gbans"].get(str(uid))
+
+    if not data:
+        msg = await bot.send_message(
+            e.chat_id,
+            f"ℹ️ **GBAN INFO**\n\nUser: `{uid}`\nStatus: ❌ Not globally banned"
+        )
+        await asyncio.sleep(6)
+        await msg.delete()
+        await e.delete()
+        return
+
+    text = (
+        "🚫 **GBAN INFO**\n\n"
+        f"• User: `{uid}`\n"
+        f"• Banned at: `{datetime.fromtimestamp(data['time']).strftime('%d %b %Y %I:%M %p')}`\n"
+        f"• Reason: `{data.get('reason', 'No reason')}`"
+    )
+
+    msg = await bot.send_message(e.chat_id, text)
+    await asyncio.sleep(10)
+    await msg.delete()
+    await e.delete()
 
 # =====================
 # LISTS

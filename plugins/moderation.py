@@ -7,10 +7,7 @@ import asyncio
 from datetime import datetime
 
 from telethon import events
-from telethon.tl.functions.channels import (
-    EditBannedRequest,
-    GetParticipantRequest
-)
+from telethon.tl.functions.channels import EditBannedRequest, GetParticipantRequest
 from telethon.tl.types import ChatBannedRights
 
 from userbot import bot
@@ -26,14 +23,14 @@ DATA_FILE = "utils/moderation_data.json"
 # PLUGIN LOAD
 # =====================
 mark_plugin_loaded(PLUGIN_NAME)
-print("✔ moderation.py loaded (ADMIN-CHECK + KICK SUPPORT)")
+print("✔ moderation.py loaded (STABLE + ADMIN AWARE)")
 
 # =====================
 # STORAGE
 # =====================
 def load():
     if not os.path.exists(DATA_FILE):
-        return {"gbans": {}, "gmutes": {}}
+        return {"gbans": {}}
     with open(DATA_FILE, "r") as f:
         return json.load(f)
 
@@ -76,14 +73,16 @@ async def is_admin(chat_id):
         return False
 
 # =====================
-# RIGHTS
+# RIGHTS (TELETHON SAFE)
 # =====================
-BAN = ChatBannedRights(view_messages=True)
-UNBAN = ChatBannedRights(view_messages=False)
-
-KICK = ChatBannedRights(
-    until_date=lambda: int(time.time()) + 60,
+BAN = ChatBannedRights(
+    until_date=None,
     view_messages=True
+)
+
+UNBAN = ChatBannedRights(
+    until_date=None,
+    view_messages=False
 )
 
 # =====================
@@ -96,9 +95,10 @@ register_help(
     ".gbaninfo <user>\n"
     ".gbanlist\n\n"
     ".kick <reply/user/id> [reason]\n\n"
-    "• Admin-rights aware global ban\n"
-    "• Auto skip non-admin groups\n"
-    "• Kick fallback if ban fails"
+    "• Admin-aware global ban\n"
+    "• Skips non-admin groups\n"
+    "• Kick = ban + unban (current group)\n"
+    "• Fully Telethon compatible"
 )
 
 # =====================
@@ -109,48 +109,46 @@ async def gban(e):
     if not is_owner(e):
         return
 
-    uid = await resolve_user(e)
-    if not uid:
-        return
+    try:
+        uid = await resolve_user(e)
+        if not uid:
+            return
 
-    reason = e.pattern_match.group(1) or "No reason"
+        reason = e.pattern_match.group(1) or "No reason"
 
-    DATA["gbans"][str(uid)] = {
-        "time": now(),
-        "reason": reason
-    }
-    save()
+        DATA["gbans"][str(uid)] = {
+            "time": now(),
+            "reason": reason
+        }
+        save()
 
-    affected = 0
+        affected = 0
 
-    async for d in bot.iter_dialogs():
-        if not (d.is_group or d.is_channel):
-            continue
-
-        if not await is_admin(d.id):
-            continue
-
-        try:
-            await bot(EditBannedRequest(d.id, uid, BAN))
-            affected += 1
-        except:
+        async for d in bot.iter_dialogs():
+            if not (d.is_group or d.is_channel):
+                continue
+            if not await is_admin(d.id):
+                continue
             try:
-                # fallback kick
-                await bot(EditBannedRequest(d.id, uid, KICK))
+                await bot(EditBannedRequest(d.id, uid, BAN))
                 affected += 1
             except:
                 pass
 
-    await e.delete()
-    msg = await bot.send_message(
-        e.chat_id,
-        f"🚫 **GLOBAL BAN DONE**\n"
-        f"User: `{uid}`\n"
-        f"Reason: `{reason}`\n"
-        f"Affected chats: `{affected}`"
-    )
-    await asyncio.sleep(8)
-    await msg.delete()
+        await e.delete()
+        msg = await bot.send_message(
+            e.chat_id,
+            f"🚫 **GLOBAL BAN APPLIED**\n"
+            f"User: `{uid}`\n"
+            f"Reason: `{reason}`\n"
+            f"Affected chats: `{affected}`"
+        )
+        await asyncio.sleep(8)
+        await msg.delete()
+
+    except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
 
 # =====================
 # UNGBAN
@@ -160,27 +158,32 @@ async def ungban(e):
     if not is_owner(e):
         return
 
-    uid = await resolve_user(e)
-    DATA["gbans"].pop(str(uid), None)
-    save()
+    try:
+        uid = await resolve_user(e)
+        DATA["gbans"].pop(str(uid), None)
+        save()
 
-    async for d in bot.iter_dialogs():
-        if not (d.is_group or d.is_channel):
-            continue
-        if not await is_admin(d.id):
-            continue
-        try:
-            await bot(EditBannedRequest(d.id, uid, UNBAN))
-        except:
-            pass
+        async for d in bot.iter_dialogs():
+            if not (d.is_group or d.is_channel):
+                continue
+            if not await is_admin(d.id):
+                continue
+            try:
+                await bot(EditBannedRequest(d.id, uid, UNBAN))
+            except:
+                pass
 
-    await e.delete()
-    msg = await bot.send_message(
-        e.chat_id,
-        f"✅ **GLOBAL BAN REMOVED**\nUser: `{uid}`"
-    )
-    await asyncio.sleep(6)
-    await msg.delete()
+        await e.delete()
+        msg = await bot.send_message(
+            e.chat_id,
+            f"✅ **GLOBAL BAN REMOVED**\nUser: `{uid}`"
+        )
+        await asyncio.sleep(6)
+        await msg.delete()
+
+    except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
 
 # =====================
 # KICK (CURRENT GROUP)
@@ -193,27 +196,30 @@ async def kick_user(e):
     if not await is_admin(e.chat_id):
         return
 
-    uid = await resolve_user(e)
-    if not uid:
-        return
-
-    reason = e.pattern_match.group(1) or "No reason"
-
     try:
-        await bot(EditBannedRequest(e.chat_id, uid, BAN))
-    except:
-        try:
-            await bot(EditBannedRequest(e.chat_id, uid, KICK))
-        except:
+        uid = await resolve_user(e)
+        if not uid:
             return
 
-    await e.delete()
-    msg = await bot.send_message(
-        e.chat_id,
-        f"👢 **USER KICKED**\nUser: `{uid}`\nReason: `{reason}`"
-    )
-    await asyncio.sleep(6)
-    await msg.delete()
+        reason = e.pattern_match.group(1) or "No reason"
+
+        # ban
+        await bot(EditBannedRequest(e.chat_id, uid, BAN))
+        await asyncio.sleep(1)
+        # unban = kick
+        await bot(EditBannedRequest(e.chat_id, uid, UNBAN))
+
+        await e.delete()
+        msg = await bot.send_message(
+            e.chat_id,
+            f"👢 **USER KICKED**\nUser: `{uid}`\nReason: `{reason}`"
+        )
+        await asyncio.sleep(6)
+        await msg.delete()
+
+    except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
 
 # =====================
 # GBAN INFO

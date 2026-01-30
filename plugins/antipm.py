@@ -28,7 +28,7 @@ SPAM_LIMIT = 5
 SPAM_WINDOW = 10  # seconds
 
 # =====================
-# MONGO INIT
+# MONGO INIT (SAFE)
 # =====================
 if mongo is None:
     col_users = None
@@ -43,11 +43,12 @@ else:
 # =====================
 def get_state():
     base = {"enabled": True, "silent": False}
+
     if col_state is None:
         return base
 
-    d = col_state.find_one({"_id": "state"}) or {}
-    base.update(d)
+    data = col_state.find_one({"_id": "state"}) or {}
+    base.update(data)
 
     col_state.update_one(
         {"_id": "state"},
@@ -58,7 +59,7 @@ def get_state():
 
 
 def set_state(key, value):
-    if col_state:
+    if col_state is not None:
         col_state.update_one(
             {"_id": "state"},
             {"$set": {key: value}},
@@ -67,11 +68,11 @@ def set_state(key, value):
 
 
 def get_user(uid):
-    return col_users.find_one({"_id": uid}) if col_users else None
+    return col_users.find_one({"_id": uid}) if col_users is not None else None
 
 
 def save_user(uid, data):
-    if col_users:
+    if col_users is not None:
         col_users.update_one(
             {"_id": uid},
             {"$set": data},
@@ -80,7 +81,7 @@ def save_user(uid, data):
 
 
 def reset_user(uid):
-    if col_users:
+    if col_users is not None:
         col_users.delete_one({"_id": uid})
 
 
@@ -166,7 +167,7 @@ async def antipm_status(e):
         return
 
     s = get_state()
-    total = col_users.count_documents({}) if col_users else 0
+    total = col_users.count_documents({}) if col_users is not None else 0
 
     await e.delete()
     msg = await bot.send_message(

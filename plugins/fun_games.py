@@ -24,6 +24,7 @@ register_help(
     ".battle @user\n"
     ".emojiwar\n"
     ".casino\n"
+    ".snake\n"
     ".virus\n\n"
     "• Reply based games\n"
     "• Fake animations\n"

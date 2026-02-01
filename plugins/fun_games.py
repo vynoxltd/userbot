@@ -21,7 +21,7 @@ print("✔ fun_games.py loaded (GAMES MODE)")
 # =====================
 register_help(
     "fungames",
-    ".tictactoe (reply)\n"
+    ".tictac (reply)\n"
     ".battle @user\n"
     ".emojiwar\n"
     ".casino\n"
@@ -51,7 +51,7 @@ async def reply_animate(e, frames, delay=0.7):
 # =====================
 # TIC TAC TOE (REPLY VS USER)
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.tictactoe$"))
+@bot.on(events.NewMessage(pattern=r"\.tictac$"))
 async def tictactoe(e):
     try:
         frames = [
@@ -65,22 +65,96 @@ async def tictactoe(e):
         await log_error(bot, PLUGIN_NAME, ex)
 
 # =====================
-# BATTLE GAME
+# BATTLE GAME (HP PvP)
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.battle(?: (.*))?$"))
+@bot.on(events.NewMessage(pattern=r"\.battle(?:\s+@?\w+)?$"))
 async def battle(e):
     try:
-        target = e.pattern_match.group(1) or "Enemy"
-        frames = [
-            f"⚔️ Battle started vs {target}",
-            "⚔️ Attacking...",
-            "🛡 Enemy defending...",
-            "💥 Critical hit!",
-            "🏆 **YOU WON THE BATTLE**"
-        ]
-        await reply_animate(e, frames, 0.8)
+        await e.delete()
+
+        me = await e.get_sender()
+        p1_id = str(me.id)
+        p1_name = me.first_name or "Detor"
+
+        # -------- OPPONENT DETECT --------
+        random_win = False
+
+        if e.is_reply:
+            r = await e.get_reply_message()
+            u = await r.get_sender()
+            p2_id = str(u.id)
+            p2_name = u.first_name or "Enemy"
+            random_win = True
+
+        elif e.pattern_match.group(0).strip() != ".battle":
+            username = e.pattern_match.group(0).split()[-1].replace("@", "")
+            p2_id = username
+            p2_name = username
+            random_win = True
+
+        else:
+            p2_id = "enemy_bot"
+            p2_name = "Enemy 🤖"
+            random_win = False  # always you win
+
+        # -------- INIT --------
+        hp1, hp2 = 100, 100
+        m = await e.reply(f"⚔️ **BATTLE STARTED**\n{p1_name} vs {p2_name}")
+
+        await asyncio.sleep(1)
+
+        # -------- FIGHT LOOP --------
+        while hp1 > 0 and hp2 > 0:
+            dmg1 = random.randint(8, 20)
+            dmg2 = random.randint(8, 20)
+
+            hp2 -= dmg1
+            hp1 -= dmg2
+
+            hp1 = max(0, hp1)
+            hp2 = max(0, hp2)
+
+            await m.edit(
+                f"⚔️ **BATTLE**\n\n"
+                f"🧍 {p1_name}: `{hp1}%`\n"
+                f"👤 {p2_name}: `{hp2}%`"
+            )
+            await asyncio.sleep(1)
+
+        # -------- WINNER LOGIC --------
+        if random_win:
+            p1_win = random.choice([True, False])
+        else:
+            p1_win = True  # always win vs enemy
+
+        if p1_win:
+            winner_id, winner_name = p1_id, p1_name
+            loser_id, loser_name = p2_id, p2_name
+        else:
+            winner_id, winner_name = p2_id, p2_name
+            loser_id, loser_name = p1_id, p1_name
+
+        record_match(
+            game="battle",
+            winner_id=winner_id,
+            winner_name=winner_name,
+            loser_id=loser_id,
+            loser_name=loser_name
+        )
+
+        await m.edit(
+            f"🏆 **BATTLE RESULT** 🏆\n\n"
+            f"🥇 Winner: **{winner_name}**\n"
+            f"💀 Loser: {loser_name}\n\n"
+            f"📊 Stats saved ✔"
+        )
+
+        await asyncio.sleep(12)
+        await m.delete()
+
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
 
 # =====================
 # EMOJI WAR

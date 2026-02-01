@@ -104,7 +104,7 @@ def mention_user(user):
 # =====================
 # FUN HANDLER
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.(slap|hug|kiss|poke|tickle)(?:\s|$)"))
+@bot.on(events.NewMessage(pattern=r"^\.(slap|hug|kiss|poke|tickle)(?:\s|$)"))
 async def fun_handler(e):
     if not is_owner(e):
         return

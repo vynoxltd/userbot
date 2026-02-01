@@ -378,6 +378,9 @@ async def battlestats(e):
         else:
             text += "🐍 **SNAKE LEADERBOARD**\nNo battles yet\n\n"
 
+        # 🔥 SEPARATOR (YAHI ADD KIYA HAI)
+        text += "━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
         # ---------- BATTLE ----------
         battle = db.get("battle", {}).get("players", {})
         if battle:
@@ -398,10 +401,6 @@ async def battlestats(e):
         m = await e.reply(text)
         await asyncio.sleep(20)
         await m.delete()
-
-    except Exception as ex:
-        mark_plugin_error(PLUGIN_NAME, ex)
-        await log_error(bot, PLUGIN_NAME, ex)
 
 # =====================
 # MVP

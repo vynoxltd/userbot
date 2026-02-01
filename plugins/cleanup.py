@@ -53,43 +53,48 @@ async def is_admin(chat_id: int, user_id: int) -> bool:
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.purge$"))
 async def purge_handler(e):
-    if not is_owner(e) or not e.is_reply:
+    if not is_owner(e):
+        return
+
+    if not e.is_reply:
+        m = await e.reply("❌ Reply to a message to purge from there")
+        await asyncio.sleep(3)
+        await m.delete()
         return
 
     try:
-        await e.delete()
-
         reply = await e.get_reply_message()
         chat_id = e.chat_id
         user_id = e.sender_id
 
+        await e.delete()
+
         start_id = reply.id
-        end_id = e.id - 1
-        if start_id > end_id:
-            return
+        msg_ids = []
 
         admin = await is_admin(chat_id, user_id)
-        msg_ids = []
 
         async for msg in bot.iter_messages(
             chat_id,
-            min_id=start_id - 1,
-            max_id=end_id
+            min_id=start_id
         ):
             if admin or msg.sender_id == user_id:
                 msg_ids.append(msg.id)
 
         for i in range(0, len(msg_ids), 100):
             await bot.delete_messages(chat_id, msg_ids[i:i + 100])
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.4)
 
-        done = await bot.send_message(chat_id, "✅ Purge complete")
-        await asyncio.sleep(3)
+        done = await bot.send_message(
+            chat_id,
+            f"🧹 Purge done\n✅ Deleted: {len(msg_ids)}"
+        )
+        await asyncio.sleep(4)
         await done.delete()
 
-    except Exception as e:
-        mark_plugin_error(PLUGIN_NAME, e)
-        await log_error(bot, PLUGIN_NAME, e)
+    except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
 
 
 # =====================

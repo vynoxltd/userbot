@@ -3,6 +3,7 @@
 import asyncio
 import random
 from telethon import events
+from utils.leaderboard_helper import record_match
 
 from userbot import bot
 from utils.help_registry import register_help
@@ -171,17 +172,28 @@ async def rps(e):
         p1_id = str(me.id)
         p1_name = me.first_name or "Player"
 
+        choices = ["ROCK ✊", "PAPER ✋", "SCISSORS ✌️"]
+
+        # ---------- NON-REPLY (FUN MODE) ----------
         if not e.is_reply:
-            m = await e.reply("❌ Reply to someone to duel in RPS")
-            await auto_cleanup(m, 6)
+            bot_choice = random.choice(choices)
+            user_choice = random.choice(choices)
+
+            m = await e.reply(
+                "✊✋✌️ **RPS (SOLO MODE)**\n\n"
+                f"{p1_name}: {user_choice}\n"
+                f"Bot 🤖: {bot_choice}\n\n"
+                "😄 Just for fun"
+            )
+            await auto_cleanup(m)
             return
 
+        # ---------- PvP MODE ----------
         r = await e.get_reply_message()
         u = await r.get_sender()
         p2_id = str(u.id)
         p2_name = u.first_name or "Opponent"
 
-        choices = ["ROCK ✊", "PAPER ✋", "SCISSORS ✌️"]
         c1 = random.choice(choices)
         c2 = random.choice(choices)
 
@@ -198,13 +210,12 @@ async def rps(e):
         win_choice = winner(c1, c2)
 
         if win_choice is None:
-            text = (
+            m = await e.reply(
                 f"✊✋✌️ **RPS DUEL**\n\n"
                 f"{p1_name}: {c1}\n"
                 f"{p2_name}: {c2}\n\n"
                 "🤝 **DRAW**"
             )
-            m = await e.reply(text)
             await auto_cleanup(m)
             return
 
@@ -223,18 +234,17 @@ async def rps(e):
             loser_name=loser_name
         )
 
-        text = (
+        m = await e.reply(
             f"✊✋✌️ **RPS DUEL**\n\n"
             f"{p1_name}: {c1}\n"
             f"{p2_name}: {c2}\n\n"
             f"🏆 **Winner:** {winner_name}"
         )
-
-        m = await e.reply(text)
         await auto_cleanup(m)
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
 
 # =====================
 # RACE (REPLY BASED)
@@ -248,18 +258,28 @@ async def race(e):
         p1_id = str(me.id)
         p1_name = me.first_name or "Player"
 
+        # ---------- NON-REPLY (FUN MODE) ----------
         if not e.is_reply:
-            m = await e.reply("❌ Reply to someone to start a race")
-            await auto_cleanup(m, 6)
+            winner = random.choice([p1_name, "Bot 🤖"])
+
+            m = await e.reply("🏎 **RACE STARTING...**")
+            frames = [
+                f"🏎 {p1_name} 💨\n🏎 Bot 🤖",
+                f"🏎 {p1_name} 💨💨\n🏎 Bot 🤖 💨",
+                f"🏁 **WINNER:** {winner}"
+            ]
+            for f in frames:
+                await m.edit(f)
+                await asyncio.sleep(0.7)
+
+            await auto_cleanup(m)
             return
 
+        # ---------- PvP MODE ----------
         r = await e.get_reply_message()
         u = await r.get_sender()
         p2_id = str(u.id)
         p2_name = u.first_name or "Opponent"
-
-        m = await e.reply("🏎 **RACE STARTING...**")
-        await asyncio.sleep(1)
 
         winner_first = random.choice([True, False])
 
@@ -270,12 +290,12 @@ async def race(e):
             winner_id, winner_name = p2_id, p2_name
             loser_id, loser_name = p1_id, p1_name
 
+        m = await e.reply("🏎 **RACE STARTING...**")
         frames = [
             f"🏎 {p1_name} 💨\n🏎 {p2_name}",
             f"🏎 {p1_name} 💨💨\n🏎 {p2_name} 💨",
             f"🏁 **WINNER:** {winner_name}"
         ]
-
         for f in frames:
             await m.edit(f)
             await asyncio.sleep(0.8)
@@ -292,7 +312,7 @@ async def race(e):
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
-
+        await log_error(bot, PLUGIN_NAME, ex)
 # =====================
 # MATH (REPLY BASED)
 # =====================

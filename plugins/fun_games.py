@@ -184,7 +184,6 @@ async def snake_game(e):
         m = await e.reply("🐍 **SNAKE BATTLE INITIALIZING...**")
 
         init_frames = [
-            "🐍 **SNAKE BATTLE INITIALIZING...**",
             "🐍 Loading venom modules...",
             "🐍 Preparing arena...",
             "🐍 Calculating abilities...",

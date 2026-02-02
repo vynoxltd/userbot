@@ -7,7 +7,7 @@ from utils.plugin_status import get_broken_plugins
 from utils.logger import log_error
 from utils.auto_delete import auto_delete
 
-print("✔ help2.py loaded")
+print("✔ help.py loaded")
 
 # Telegram safe limit (real limit ~4096)
 MAX_LEN = 3500
@@ -32,7 +32,7 @@ def build_main_help():
     text = (
         "📘 USERBOT HELP (AUTO)\n\n"
         "Use:\n"
-        ".help2 plugin\n\n"
+        ".help plugin\n\n"
         "Available plugins:\n"
     )
 
@@ -41,8 +41,8 @@ def build_main_help():
 
     text += (
         "\nExtra:\n"
-        ".help2 all\n"
-        ".help2 broken"
+        ".help all\n"
+        ".help broken"
     )
 
     return text
@@ -51,7 +51,7 @@ def build_main_help():
 # =====================
 # HELP2 COMMAND
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.help2(?:\s+(.*))?$"))
+@bot.on(events.NewMessage(pattern=r"\.help(?:\s+(.*))?$"))
 async def help2_cmd(e):
     if not is_owner(e):
         return
@@ -129,4 +129,4 @@ async def help2_cmd(e):
         await send_long(e, section.strip(), 40)
 
     except Exception as ex:
-        await log_error(bot, "help2.py", ex)
+        await log_error(bot, "help.py", ex)

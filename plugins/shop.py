@@ -12,6 +12,21 @@ from utils.logger import log_error
 PLUGIN_NAME = "shop.py"
 mark_plugin_loaded(PLUGIN_NAME)
 
+AUTO_DEL = 30  # seconds
+
+# =====================
+# AUTO DELETE HELPER
+# =====================
+async def auto_reply(e, text):
+    try:
+        await e.delete()  # delete command instantly
+    except:
+        pass
+
+    m = await e.reply(text)
+    await asyncio.sleep(AUTO_DEL)
+    await m.delete()
+
 # =====================
 # HELP
 # =====================
@@ -20,7 +35,8 @@ register_help(
     ".coins\n"
     ".shop\n"
     ".buy <item_id>\n"
-    ".inventory\n\n"
+    ".inventory\n"
+    ".use <item_id>\n\n"
     "• One global shop\n"
     "• Minigames + Battle items\n"
 )
@@ -31,7 +47,7 @@ register_help(
 @bot.on(events.NewMessage(pattern=r"\.coins$"))
 async def coins(e):
     c = get_coins(e.sender_id)
-    await e.reply(f"💰 **Your Coins:** `{c}`")
+    await auto_reply(e, f"💰 **Your Coins:** `{c}`")
 
 # =====================
 # SHOP
@@ -52,11 +68,9 @@ async def shop(e):
                         f"🆔 `{key}` | 💰 {item['price']} | ⭐ {item['rarity']}\n"
                     )
 
-                    # 🔥 DESCRIPTION (ADD)
                     if item.get("desc"):
                         text += f"📜 {item['desc']}\n"
 
-                    # 🔥 ABILITIES (ADD)
                     if item.get("ability"):
                         text += "✨ **Abilities:**\n"
                         for ab, val in item["ability"].items():
@@ -64,11 +78,12 @@ async def shop(e):
 
                     text += "\n"
 
-        await e.reply(text)
+        await auto_reply(e, text)
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)
+
 # =====================
 # BUY ITEM
 # =====================
@@ -79,23 +94,22 @@ async def buy(e):
         item = ITEMS.get(item_id)
 
         if not item:
-            await e.reply("❌ Item not found")
+            await auto_reply(e, "❌ Item not found")
             return
 
         price = item["price"]
 
         if not spend(e.sender_id, price):
-            await e.reply("❌ Not enough coins")
+            await auto_reply(e, "❌ Not enough coins")
             return
 
         data, player = get_player(e.sender_id, e.sender.first_name)
-
         inv = player.setdefault("items", {})
         inv[item_id] = inv.get(item_id, 0) + 1
-
         save_players(data)
 
-        await e.reply(
+        await auto_reply(
+            e,
             f"✅ **Item Purchased!**\n\n"
             f"{item['name']}\n"
             f"💰 Spent: `{price}`\n"

@@ -61,11 +61,12 @@ async def challenge(e):
         eq1 = get_equipped(p1)
         eq2 = get_equipped(p2)
 
-        w1 = eq1["weapon"]["attack"] if eq1["weapon"] else 0
-        d1 = eq1["defense"]["defense"] if eq1["defense"] else 0
+# ✅ get_equipped already returns INT values
+        w1 = eq1.get("weapon", 0) or 0
+        d1 = eq1.get("defense", 0) or 0
 
-        w2 = eq2["weapon"]["attack"] if eq2["weapon"] else 0
-        d2 = eq2["defense"]["defense"] if eq2["defense"] else 0
+        w2 = eq2.get("weapon", 0) or 0
+        d2 = eq2.get("defense", 0) or 0
 
         atk1 = p1["attack"] + w1
         def1 = p1["defense"] + d1
@@ -109,7 +110,7 @@ async def challenge(e):
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
-        await log_error(bot, PLUGIN_NAME, ex)
+        await log_error(PLUGIN_NAME, ex)
 
 # =====================
 # REPAIR
@@ -158,4 +159,4 @@ async def repair(e):
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
-        await log_error(bot, PLUGIN_NAME, ex)
+        await log_error(PLUGIN_NAME, ex)

@@ -131,3 +131,91 @@ ITEMS = {
         "category": "minigame"
     }
 }
+ # -----------------
+    # SHIELD (PROTECTION)
+    # -----------------
+    "shield": {
+        "name": "🛡 Shield",
+        "price": 60,
+        "rarity": "common",
+        "attack": 0,
+        "defense": 0,
+        "hp": 0,
+        "consumable": True,
+        "ability": {
+            "ignore_mistake": 1
+        },
+        "desc": "Ignore 1 wrong answer / bomb blast"
+    },
+
+    # -----------------
+    # LUCKY CHARM (NERFED)
+    # -----------------
+    "lucky_charm": {
+        "name": "🍀 Lucky Charm",
+        "price": 90,
+        "rarity": "rare",
+        "attack": 0,
+        "defense": 0,
+        "hp": 0,
+        "consumable": True,
+        "ability": {
+            "hint": True,
+            "range_reduce": 0.25  # only 25% hint (balanced)
+        },
+        "desc": "Get a small hint in Guess / Roulette"
+    },
+
+    # -----------------
+    # SPEED BOOST
+    # -----------------
+    "speed_boost": {
+        "name": "⚡ Speed Boost",
+        "price": 120,
+        "rarity": "rare",
+        "attack": 0,
+        "defense": 0,
+        "hp": 0,
+        "consumable": True,
+        "ability": {
+            "reaction_bonus": 0.5  # seconds advantage
+        },
+        "desc": "Faster reaction in TypeFast / React"
+    },
+
+    # -----------------
+    # BOMB DEFUSER
+    # -----------------
+    "bomb_defuser": {
+        "name": "🧯 Bomb Defuser",
+        "price": 70,
+        "rarity": "common",
+        "attack": 0,
+        "defense": 0,
+        "hp": 0,
+        "consumable": True,
+        "ability": {
+            "defuse_bomb": 1
+        },
+        "desc": "Survive 1 bomb explosion"
+    },
+
+    # -----------------
+    # VIP STATUS
+    # -----------------
+    "vip": {
+        "name": "👑 VIP Pass",
+        "price": 250,
+        "rarity": "legendary",
+        "attack": 0,
+        "defense": 0,
+        "hp": 0,
+        "consumable": False,
+        "ability": {
+            "coin_bonus": 5,
+            "highlight": True
+        },
+        "desc": "Extra coins on win + VIP highlight"
+    }
+
+}

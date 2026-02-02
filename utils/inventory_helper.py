@@ -1,25 +1,26 @@
-import json
-import os
+# utils/inventory_helper.py
 
-INV_FILE = "utils/inventory.json"
+def get_equipped(player):
+    weapon = player.get("weapon")
+    defense = player.get("defense")
 
-def load_inv():
-    if not os.path.exists(INV_FILE):
-        return {}
-    with open(INV_FILE, "r") as f:
-        return json.load(f)
+    return {
+        "weapon": weapon,
+        "weapon_hp": player.get("weapon_hp", 0),
+        "defense": defense,
+        "defense_hp": player.get("defense_hp", 0)
+    }
 
-def save_inv(data):
-    with open(INV_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+def damage_items(player, weapon_dmg=5, defense_dmg=5):
+    if player.get("weapon"):
+        player["weapon_hp"] = max(0, player.get("weapon_hp", 0) - weapon_dmg)
 
-def add_item(user_id, item_id, qty=1):
-    data = load_inv()
-    uid = str(user_id)
-    data.setdefault(uid, {})
-    data[uid][item_id] = data[uid].get(item_id, 0) + qty
-    save_inv(data)
+    if player.get("defense"):
+        player["defense_hp"] = max(0, player.get("defense_hp", 0) - defense_dmg)
 
-def get_inventory(user_id):
-    data = load_inv()
-    return data.get(str(user_id), {})
+def repair_item(player, item, amount):
+    if item == "weapon" and player.get("weapon"):
+        player["weapon_hp"] = min(100, player.get("weapon_hp", 0) + amount)
+
+    if item == "defense" and player.get("defense"):
+        player["defense_hp"] = min(100, player.get("defense_hp", 0) + amount)

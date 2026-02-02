@@ -2,6 +2,7 @@ import asyncio
 import random
 import time
 from telethon import events
+from utils.coins_helper import add_coin
 
 from userbot import bot
 from utils.owner import is_owner
@@ -260,29 +261,43 @@ async def game_replies(e):
         if not game:
             return
 
+        # ⏱ TIME SAFETY CHECK
+        if time.time() > game.get("end", 0):
+            active_games.pop(r.id, None)
+            return
+
+        uid = e.sender_id
         name = e.sender.first_name or "User"
         text = e.raw_text.strip()
 
+        # ---------- GUESS / ROULETTE / MATH ----------
         if game["type"] in ("guess", "roulette", "math"):
             if text.isdigit() and int(text) == game["answer"]:
-                await e.reply(f"🏆 **WINNER:** {name}")
+                await e.reply(f"🏆 **WINNER:** {name}\n+10 💰")
+                add_coin(uid, name, 10)
                 del active_games[r.id]
 
+        # ---------- TYPE FAST ----------
         elif game["type"] == "type":
             if text == game["answer"]:
-                await e.reply(f"⌨️ **FASTEST:** {name}")
+                await e.reply(f"⌨️ **FASTEST:** {name}\n+10 💰")
+                add_coin(uid, name, 10)
                 del active_games[r.id]
 
+        # ---------- BOMB ----------
         elif game["type"] == "bomb":
             if game["ban"] in text.lower():
                 await e.reply(f"💥 **BOOM! {name} exploded**")
                 del active_games[r.id]
 
+        # ---------- REACT ----------
         elif game["type"] == "react":
             if text == game["emoji"]:
-                await e.reply(f"⚡ **FASTEST:** {name}")
+                await e.reply(f"⚡ **FASTEST:** {name}\n+10 💰")
+                add_coin(uid, name, 10)
                 del active_games[r.id]
 
+        # ---------- SPIN ----------
         elif game["type"] == "spin":
             game["players"].add(name)
 

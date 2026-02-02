@@ -1,15 +1,14 @@
-# plugins/bet_jackpot.py
-
 import time
 import random
 import asyncio
 from telethon import events
 
 from userbot import bot
-from utils.players_helper import get_player, save_players
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 from utils.logger import log_error
+from utils.coins_helper import get_coins, add_coin, spend
+from utils.players_helper import get_player, save_players
 
 PLUGIN_NAME = "bet_jackpot.py"
 mark_plugin_loaded(PLUGIN_NAME)
@@ -33,8 +32,8 @@ register_help(
 AUTO_DEL = 8
 DAILY_COOLDOWN = 86400  # 24h
 
-# active bet amounts per chat
-ACTIVE_BETS = {}  # chat_id -> set(amounts)
+# chat_id -> set(bet_amounts)
+ACTIVE_BETS = {}
 
 # =====================
 # TEMP MESSAGE
@@ -52,23 +51,21 @@ async def bet_game(e):
     try:
         amount = int(e.pattern_match.group(1))
         chat = e.chat_id
-
-        data, p = get_player(e.sender_id, e.sender.first_name)
+        uid = e.sender_id
+        name = e.sender.first_name or "User"
 
         if amount <= 0:
             return
 
-        if p["coins"] < amount:
+        # 💰 CHECK + DEDUCT COINS (SAFE)
+        if not spend(uid, amount):
             await temp_msg(chat, "❌ Not enough coins", e.id)
             return
 
         bets = ACTIVE_BETS.setdefault(chat, set())
 
-        # ❌ DUPLICATE BET
+        # ❌ DUPLICATE BET → LOSS (coins already deducted)
         if amount in bets:
-            p["coins"] -= amount
-            save_players(data)
-
             await temp_msg(
                 chat,
                 f"💥 **BET FAILED!**\n"
@@ -78,17 +75,16 @@ async def bet_game(e):
             )
             return
 
-        # ✅ UNIQUE BET
+        # ✅ UNIQUE BET → WIN
         bets.add(amount)
-        win = amount * 2
-        p["coins"] += amount  # net +amount
-        save_players(data)
+        win_amount = amount * 2
+        add_coin(uid, name, win_amount)
 
         await temp_msg(
             chat,
             f"🎉 **BET WON!**\n"
             f"💰 Bet: `{amount}`\n"
-            f"🏆 Won: `{win}` coins",
+            f"🏆 Won: `{win_amount}` coins",
             e.id
         )
 
@@ -102,10 +98,13 @@ async def bet_game(e):
 @bot.on(events.NewMessage(pattern=r"\.jackpot$"))
 async def jackpot(e):
     try:
-        data, p = get_player(e.sender_id, e.sender.first_name)
-        now = int(time.time())
+        uid = e.sender_id
+        name = e.sender.first_name or "User"
+        data, p = get_player(uid, name)
 
+        now = int(time.time())
         last = p.get("last_jackpot", 0)
+
         if now - last < DAILY_COOLDOWN:
             left = DAILY_COOLDOWN - (now - last)
             hrs = left // 3600
@@ -116,13 +115,13 @@ async def jackpot(e):
             )
             return
 
-        # 🎰 WEIGHTED REWARDS
+        # 🎰 WEIGHTED REWARDS (HIGH AMOUNT = RARE)
         rewards = [50, 100, 200, 500]
-        weights = [60, 30, 8, 2]  # 500 very rare
+        weights = [60, 30, 8, 2]
 
         reward = random.choices(rewards, weights)[0]
 
-        p["coins"] += reward
+        add_coin(uid, name, reward)
         p["last_jackpot"] = now
         save_players(data)
 

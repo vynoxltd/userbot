@@ -118,7 +118,7 @@ async def help2_cmd(e):
             return
 
         # -----------------
-        # .help2 <plugin>
+        # .help <plugin>
         # -----------------
         section = help_data.get(arg)
         if not section:

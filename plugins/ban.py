@@ -37,7 +37,6 @@ UNBAN_RIGHTS = ChatBannedRights(
 # MUTE RIGHTS
 # =====================
 MUTE_RIGHTS = ChatBannedRights(
-    until_date=until,
     send_messages=True,
     send_media=True,
     send_stickers=True,

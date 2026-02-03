@@ -2,15 +2,14 @@
 
 import os
 import json
-import time
 import math
-from datetime import datetime
 
 from telethon import events
 from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.functions.photos import GetUserPhotosRequest
 
 from userbot import bot
+from utils.owner import is_owner   # ✅ FIXED
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 from utils.logger import log_error
@@ -46,13 +45,10 @@ register_help(
     "osint",
     ".userinfo (reply / user / id)\n"
     ".numberinfo (reply)\n"
-    ".userphotos (reply)\n"
-    ".trackuser (reply)\n"
-    ".untrackuser (reply)\n"
-    ".tracklist\n\n"
+    ".userphotos (reply)\n\n"
     "• Telegram OSINT (ToS-safe)\n"
-    "• No privacy bypass\n"
-    "• Stable & health-safe"
+    "• Owner only\n"
+    "• No privacy bypass"
 )
 
 # =====================
@@ -96,10 +92,13 @@ def risk_score(user, bio):
     return max(0, min(score, 100))
 
 # =====================
-# USERINFO (FIXED)
+# USERINFO
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.userinfo(?:\s+(.+))?$"))
 async def userinfo(e):
+    if not is_owner(e):
+        return  # 🔒 owner only
+
     try:
         uid = await resolve_user(e)
         if not uid:
@@ -139,6 +138,9 @@ async def userinfo(e):
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.numberinfo$"))
 async def numberinfo(e):
+    if not is_owner(e):
+        return
+
     try:
         uid = await resolve_user(e)
         user = await bot.get_entity(uid)
@@ -149,8 +151,9 @@ async def numberinfo(e):
         await e.reply(
             f"📞 **NUMBER INFO**\n\n"
             f"• Number: `+{user.phone}`\n"
-            f"• Visibility: `Public to you`"
+            f"• Visibility: `Visible to you`"
         )
+
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)
@@ -160,10 +163,14 @@ async def numberinfo(e):
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.userphotos$"))
 async def userphotos(e):
+    if not is_owner(e):
+        return
+
     try:
         uid = await resolve_user(e)
         photos = await bot(GetUserPhotosRequest(uid, 0, 0, 20))
         await e.reply(f"📸 Profile photos: `{len(photos.photos)}`")
+
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)

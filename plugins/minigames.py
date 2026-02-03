@@ -188,7 +188,7 @@ async def typefast_game(e):
         del active_games[msg.id]
 
 # =====================
-# 💣 BOMB GAME (CUT WIRES + FAKE)
+# 💣 BOMB GAME (INSTANT CUT WIRE)
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.bomb$"))
 async def bomb_game(e):
@@ -200,59 +200,26 @@ async def bomb_game(e):
     wires = ["red", "blue", "yellow"]
     safe_wire = random.choice(wires)
 
-    # 😈 40% chance fake wire
+    # 😈 40% fake wire (troll)
     fake_wire = None
     if random.random() < 0.4:
         fake_wire = random.choice([w for w in wires if w != safe_wire])
 
     msg = await e.reply(
-        "💣 **CUT THE WIRE** 💣\n\n"
-        "🔴 red\n🔵 blue\n🟡 yellow\n\n"
-        "✂️ Type: `cut <color>`\n"
-        f"⏱ {GAME_TIME}s"
+        "💣 **CUT THE RIGHT WIRE TO DEFUSE THE BOMB** 💣\n\n"
+        "🔴 red\n"
+        "🔵 blue\n"
+        "🟡 yellow\n\n"
+        "✂️ Reply with color name\n"
+        "⚠️ One wrong move = BOOM!"
     )
 
     active_games[msg.id] = {
         "type": "bomb",
         "safe": safe_wire,
         "fake": fake_wire,
-        "choices": {},   # uid -> (name, wire)
-        "end": time.time() + GAME_TIME,
-        "chat": e.chat_id
+        "played": set()   # uid who already tried
     }
-
-    await asyncio.sleep(GAME_TIME)
-
-    game = active_games.pop(msg.id, None)
-    if not game:
-        return
-
-    blasted, saved, trolled = [], [], []
-
-    for uid, (name, wire) in game["choices"].items():
-        if wire == game["safe"]:
-            saved.append(f"• {name} ({wire})")
-            add_coin(uid, name, 10)
-
-        elif game["fake"] and wire == game["fake"]:
-            trolled.append(f"• {name} ({wire}) 😈")
-
-        else:
-            blasted.append(f"• {name} ({wire})")
-
-    text = (
-        "💣 **BOMB RESULT** 💣\n\n"
-        f"🧯 **REAL SAFE:** `{game['safe']}`\n"
-    )
-
-    if game["fake"]:
-        text += f"😈 **FAKE SAFE:** `{game['fake']}`\n"
-
-    text += "\n💥 **BLASTED:**\n" + ("\n".join(blasted) if blasted else "• None")
-    text += "\n\n😈 **TROLLED:**\n" + ("\n".join(trolled) if trolled else "• None")
-    text += "\n\n🧯 **SAFE:**\n" + ("\n".join(saved) if saved else "• None")
-
-    await msg.reply(text)
 
 # =====================
 # UNIVERSAL HANDLER

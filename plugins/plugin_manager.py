@@ -13,6 +13,8 @@ from utils.logger import log_error
 PLUGIN_NAME = "plugin_manager"
 mark_plugin_loaded(PLUGIN_NAME)
 
+mark_plugin_loaded(PLUGIN_NAME)
+print("✔ plugin_manager.py loaded")
 # =====================
 # HELP
 # =====================

@@ -1,5 +1,6 @@
 # plugins/ban.py
 
+import time
 import asyncio
 from telethon import events
 from telethon.tl.functions.channels import EditBannedRequest, GetParticipantRequest
@@ -32,6 +33,30 @@ UNBAN_RIGHTS = ChatBannedRights(
     view_messages=False
 )
 
+# =====================
+# MUTE RIGHTS
+# =====================
+MUTE_RIGHTS = ChatBannedRights(
+    until_date=until,
+    send_messages=True,
+    send_media=True,
+    send_stickers=True,
+    send_gifs=True,
+    send_games=True,
+    send_inline=True
+)
+# =====================
+# UNMUTE RIGHTS
+# =====================
+UNMUTE_RIGHTS = ChatBannedRights(
+    until_date=None,
+    send_messages=False,
+    send_media=False,
+    send_stickers=False,
+    send_gifs=False,
+    send_games=False,
+    send_inline=False
+)
 # =====================
 # UTILS
 # =====================
@@ -67,12 +92,33 @@ async def is_admin(chat_id):
 register_help(
     "ban",
     ".ban <reply/user/id> [reason]\n"
-    ".unban <reply/user/id> [reason]\n\n"
+    ".unban <reply/user/id> [reason]\n"
+    ".mute <time> <reason>\n"
+    ".unmute [reason]\n\n"
     "• Works in groups & channels\n"
     "• Reply / username / user id supported\n"
     "• Reason supported"
 )
 
+def parse_time(text):
+    """
+    10m, 2h, 1d → seconds
+    """
+    if not text:
+        return None
+
+    try:
+        unit = text[-1]
+        val = int(text[:-1])
+
+        if unit == "m":
+            return val * 60
+        if unit == "h":
+            return val * 3600
+        if unit == "d":
+            return val * 86400
+    except:
+        return None
 # =====================
 # BAN
 # =====================
@@ -134,6 +180,86 @@ async def unban_user(e):
             f"User: `{uid}`\n"
             f"Note: `{reason}`"
         )
+        await asyncio.sleep(6)
+        await msg.delete()
+
+    except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
+# =====================
+# MUTE
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.mute(?: (.*))?$"))
+async def mute_user(e):
+    if not e.is_group:
+        return
+
+    if not await is_admin(e.chat_id):
+        return
+
+    try:
+        uid = await resolve_user(e)
+        if not uid:
+            return
+
+        args = (e.pattern_match.group(1) or "").split()
+        duration = parse_time(args[0]) if args else None
+
+        reason = " ".join(args[1:]) if duration else " ".join(args)
+        reason = reason or "No reason"
+
+        until = None
+        if duration:
+            until = int(time.time()) + duration
+
+        rights = MUTE_RIGHTS
+        rights.until_date = until
+
+        await bot(EditBannedRequest(e.chat_id, uid, rights))
+
+        await e.delete()
+        msg = await bot.send_message(
+            e.chat_id,
+            f"🔇 **USER MUTED**\n"
+            f"User: `{uid}`\n"
+            f"Duration: `{args[0] if duration else 'Permanent'}`\n"
+            f"Reason: `{reason}`"
+        )
+
+        await asyncio.sleep(6)
+        await msg.delete()
+
+    except Exception as ex:
+        mark_plugin_error(PLUGIN_NAME, ex)
+        await log_error(bot, PLUGIN_NAME, ex)
+# =====================
+# UNMUTE
+# =====================
+@bot.on(events.NewMessage(pattern=r"\.unmute(?: (.*))?$"))
+async def unmute_user(e):
+    if not e.is_group:
+        return
+
+    if not await is_admin(e.chat_id):
+        return
+
+    try:
+        uid = await resolve_user(e)
+        if not uid:
+            return
+
+        reason = e.pattern_match.group(1) or "No reason"
+
+        await bot(EditBannedRequest(e.chat_id, uid, UNMUTE_RIGHTS))
+
+        await e.delete()
+        msg = await bot.send_message(
+            e.chat_id,
+            f"🔊 **USER UNMUTED**\n"
+            f"User: `{uid}`\n"
+            f"Note: `{reason}`"
+        )
+
         await asyncio.sleep(6)
         await msg.delete()
 

@@ -124,12 +124,17 @@ def parse_time(text):
 # =====================
 @bot.on(events.NewMessage(pattern=r"\.ban(?: (.*))?$"))
 async def ban_user(e):
+    # 1️⃣ Sirf group me
     if not e.is_group:
         return
 
-    if not await is_admin(e.chat_id):
-        return
+    # 2️⃣ Command sirf USERBOT OWNER se
+    if not is_owner(e):
+        return  # silently ignore
 
+    # 3️⃣ Userbot admin hona chahiye
+    if not await is_admin(e.chat_id):
+        await e.reply("❌ I am not admin here")
     try:
         uid = await resolve_user(e)
         if not uid:
@@ -146,6 +151,7 @@ async def ban_user(e):
             f"User: `{uid}`\n"
             f"Reason: `{reason}`"
         )
+
         await asyncio.sleep(6)
         await msg.delete()
 

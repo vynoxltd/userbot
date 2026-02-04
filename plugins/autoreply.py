@@ -193,8 +193,17 @@ async def owner_reply_track(e):
 @bot.on(events.NewMessage(incoming=True))
 async def autoreply_listener(e):
     try:
+        # sirf private chats
         if not e.is_private or is_owner(e):
             return
+
+        sender = await e.get_sender()
+
+        # 🚫 ignore bots
+        if sender and sender.bot:
+            return
+
+        # 🔘 autoreply off
         if not is_enabled():
             return
 
@@ -210,7 +219,7 @@ async def autoreply_listener(e):
         if uid in get_list("AUTOREPLY_BLACKLIST"):
             return
 
-        # ✅ whitelist
+        # ✅ whitelist (agar set hai)
         wl = get_list("AUTOREPLY_WHITELIST")
         if wl and uid not in wl:
             return

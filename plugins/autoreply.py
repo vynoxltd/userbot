@@ -10,7 +10,7 @@ from utils.logger import log_error
 from utils.help_registry import register_help
 from database import settings
 
-print("✔ autoreply.py loaded (SMART v2 + SEEN ONLY)")
+print("✔ autoreply.py loaded (SMART v2 + SEEN ONLY + COMPAT)")
 
 # =====================
 # HELP
@@ -39,7 +39,8 @@ register_help(
     "• DM only\n"
     "• Owner only\n"
     "• Smart autoreply v2\n"
-    "• Seen-only supported"
+    "• Seen-only supported\n"
+    "• Old data compatible"
 )
 
 # =====================
@@ -67,52 +68,77 @@ FIRST_REPLY_TEXT = "👋 Hi! Thanks for messaging.\nI’ll reply shortly."
 # =====================
 # DB HELPERS
 # =====================
-def get_var(k, d=None):
-    doc = settings.find_one({"_id": k})
-    return doc["value"] if doc else d
+def get_var(key, default=None):
+    doc = settings.find_one({"_id": key})
+    return doc["value"] if doc else default
 
-def set_var(k, v):
-    settings.update_one({"_id": k}, {"$set": {"value": v}}, upsert=True)
+def set_var(key, value):
+    settings.update_one(
+        {"_id": key},
+        {"$set": {"value": value}},
+        upsert=True
+    )
 
-def get_list(k):
-    raw = get_var(k, "")
+# 🔁 BACKWARD COMPAT HELPER
+def get_var_compat(new_key, old_key, default=None):
+    return get_var(new_key, get_var(old_key, default))
+
+def get_list(key):
+    raw = get_var(key, "")
     return [x for x in raw.split("|") if x]
 
-def save_list(k, data):
-    set_var(k, "|".join(data))
+def save_list(key, data):
+    set_var(key, "|".join(data))
 
 # =====================
-# FLAGS
+# FLAGS (FIXED)
 # =====================
-def enabled(): return get_var("AUTOREPLY_ON", "off") == "on"
-def cooldown(): return int(get_var("AR_COOLDOWN", "0"))
-def firstreply(): return get_var("AR_FIRST", "off") == "on"
-def autodisable(): return get_var("AR_AUTODISABLE", "off") == "on"
-def scamfilter(): return get_var("AR_SCAM", "off") == "on"
-def seen_only(): return get_var("AR_SEENONLY", "off") == "on"
+def enabled():
+    return get_var_compat("AR_ON", "AUTOREPLY_ON", "off") == "on"
+
+def cooldown():
+    return int(get_var("AR_COOLDOWN", "0"))
+
+def firstreply():
+    return get_var("AR_FIRST", "off") == "on"
+
+def autodisable():
+    return get_var("AR_AUTODISABLE", "off") == "on"
+
+def scamfilter():
+    return get_var("AR_SCAM", "off") == "on"
+
+def seen_only():
+    return get_var("AR_SEENONLY", "off") == "on"
 
 # =====================
 # OFFICE HOURS
 # =====================
-def in_office_hours():
+def outside_office_hours():
     if get_var("AR_OFFICE", "off") != "on":
         return False
+
     t = get_var("AR_OFFICE_TIME")
     if not t:
         return False
+
     s, e = map(int, t.split("-"))
     h = (datetime.utcnow() + timedelta(hours=5, minutes=30)).hour
     return not (s <= h <= e)
 
 # =====================
-# TIME TEXT
+# TIME TEXT (OLD + NEW KEYS)
 # =====================
 def time_text():
     h = (datetime.utcnow() + timedelta(hours=5, minutes=30)).hour
-    if 5 <= h <= 11: return get_var("AUTOREPLY_MORNING", TIME_TEXTS["morning"])
-    if 12 <= h <= 16: return get_var("AUTOREPLY_AFTERNOON", TIME_TEXTS["afternoon"])
-    if 17 <= h <= 20: return get_var("AUTOREPLY_EVENING", TIME_TEXTS["evening"])
-    return get_var("AUTOREPLY_NIGHT", TIME_TEXTS["night"])
+
+    if 5 <= h <= 11:
+        return get_var_compat("AR_MORNING", "AUTOREPLY_MORNING", TIME_TEXTS["morning"])
+    if 12 <= h <= 16:
+        return get_var_compat("AR_AFTERNOON", "AUTOREPLY_AFTERNOON", TIME_TEXTS["afternoon"])
+    if 17 <= h <= 20:
+        return get_var_compat("AR_EVENING", "AUTOREPLY_EVENING", TIME_TEXTS["evening"])
+    return get_var_compat("AR_NIGHT", "AUTOREPLY_NIGHT", TIME_TEXTS["night"])
 
 # =====================
 # OWNER COMMANDS
@@ -121,6 +147,12 @@ def time_text():
 async def _(e):
     if not is_owner(e): return
     set_var("AR_ON", e.pattern_match.group(1))
+    await e.delete()
+
+@bot.on(events.NewMessage(pattern=r"\.autoreplydelay (\d+)"))
+async def _(e):
+    if not is_owner(e): return
+    set_var("AR_DELAY", e.pattern_match.group(1))
     await e.delete()
 
 @bot.on(events.NewMessage(pattern=r"\.autocooldown (\d+)"))
@@ -196,10 +228,10 @@ async def autoreply(e):
             return
 
         sender = await e.get_sender()
-        if sender.bot:
+        if sender and sender.bot:
             return
 
-        if not enabled() or in_office_hours():
+        if not enabled() or outside_office_hours():
             return
 
         # 👁 SEEN ONLY MODE
@@ -236,10 +268,12 @@ async def autoreply(e):
 
         old = LAST_AUTOREPLY.get(uid)
         if old:
-            try: await old.delete()
-            except: pass
+            try:
+                await old.delete()
+            except:
+                pass
 
-        await asyncio.sleep(int(get_var("AUTOREPLY_DELAY", "0")))
+        await asyncio.sleep(int(get_var_compat("AR_DELAY", "AUTOREPLY_DELAY", "0")))
         LAST_AUTOREPLY[uid] = await e.reply(msg)
         LAST_REPLY_TIME[uid] = now
 

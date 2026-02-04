@@ -84,7 +84,7 @@ def save_list(k, data):
 # =====================
 # FLAGS
 # =====================
-def enabled(): return get_var("AR_ON", "off") == "on"
+def enabled(): return get_var("AUTOREPLY_ON", "off") == "on"
 def cooldown(): return int(get_var("AR_COOLDOWN", "0"))
 def firstreply(): return get_var("AR_FIRST", "off") == "on"
 def autodisable(): return get_var("AR_AUTODISABLE", "off") == "on"
@@ -109,10 +109,10 @@ def in_office_hours():
 # =====================
 def time_text():
     h = (datetime.utcnow() + timedelta(hours=5, minutes=30)).hour
-    if 5 <= h <= 11: return get_var("AR_MORNING", TIME_TEXTS["morning"])
-    if 12 <= h <= 16: return get_var("AR_AFTERNOON", TIME_TEXTS["afternoon"])
-    if 17 <= h <= 20: return get_var("AR_EVENING", TIME_TEXTS["evening"])
-    return get_var("AR_NIGHT", TIME_TEXTS["night"])
+    if 5 <= h <= 11: return get_var("AUTOREPLY_MORNING", TIME_TEXTS["morning"])
+    if 12 <= h <= 16: return get_var("AUTOREPLY_AFTERNOON", TIME_TEXTS["afternoon"])
+    if 17 <= h <= 20: return get_var("AUTOREPLY_EVENING", TIME_TEXTS["evening"])
+    return get_var("AUTOREPLY_NIGHT", TIME_TEXTS["night"])
 
 # =====================
 # OWNER COMMANDS

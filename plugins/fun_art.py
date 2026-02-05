@@ -6,6 +6,8 @@ import asyncio
 from telethon import events
 from userbot import bot
 from utils.help_registry import register_help
+from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
+from utils.logger import log_error
 
 PLUGIN_NAME = "fun_art.py"
 DEFAULTUSER = "ULTROID"
@@ -33,7 +35,7 @@ ARTS = {
 
     "kiler": """_/﹋\\_
 (҂`_´)
-<,︻╦╤─ ҉ - - - 🤯
+<,︻╦╤─ ҉ - - - Killer Finished you
 _/﹋\\_
 """,
 
@@ -191,7 +193,8 @@ async def kiler_anim(e):
 # =====================
 register_help(
     "fun_art",
-    ".cat .kiler .monster .pig .gun .dog .hello .india\n"
+    ".cat .kiler .monster .pig",
+    ".gun .dog .hello .india\n"
     ".stupid\n"
     ".killer <name>\n"
     "• ASCII art + fun animations"

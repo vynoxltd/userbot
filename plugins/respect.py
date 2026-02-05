@@ -5,15 +5,14 @@ from datetime import date
 from telethon import events
 
 from userbot import bot
-from utils.owner import is_owner
 from utils.help_registry import register_help
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 from utils.logger import log_error
 
 PLUGIN_NAME = "respect.py"
-DB_FILE = "utils/respect.json"
+DB_FILE = "data/respect.json"
 
-mark_plugin_loaded(PLUGIN_NAME)
+print("✔ respect.py loaded")
 
 # =====================
 # HELP
@@ -37,27 +36,28 @@ def load_db():
         return json.load(f)
 
 def save_db(db):
+    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
     with open(DB_FILE, "w") as f:
         json.dump(db, f, indent=2)
 
 # =====================
 # RESPECT HANDLER
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.([+-])$"))
+@bot.on(events.NewMessage(outgoing=True, pattern=r"\.(\+|\-)$"))
 async def respect_handler(e):
     if not e.is_reply:
         return
 
     try:
-        await e.delete()
         action = e.pattern_match.group(1)
 
         giver = e.sender_id
         reply = await e.get_reply_message()
-        target = reply.sender_id
+        sender = await reply.get_sender()
+        target = sender.id
 
         if giver == target:
-            return
+            return await e.reply("❌ Self respect not allowed")
 
         today = str(date.today())
         key = f"{giver}:{target}"
@@ -74,7 +74,7 @@ async def respect_handler(e):
         user = db["users"].setdefault(
             str(target),
             {
-                "name": reply.sender.first_name or "User",
+                "name": sender.first_name or "User",
                 "respect": 0
             }
         )
@@ -89,8 +89,10 @@ async def respect_handler(e):
             f"👤 {user['name']}\n"
             f"⭐ Respect: `{user['respect']}`"
         )
+
         await asyncio.sleep(6)
         await m.delete()
+        await e.delete()
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
@@ -99,10 +101,9 @@ async def respect_handler(e):
 # =====================
 # RESPECT TOP
 # =====================
-@bot.on(events.NewMessage(pattern=r"\.respecttop$"))
+@bot.on(events.NewMessage(outgoing=True, pattern=r"\.respecttop$"))
 async def respect_top(e):
     try:
-        await e.delete()
         db = load_db()
         users = db["users"]
 
@@ -125,7 +126,10 @@ async def respect_top(e):
         m = await e.reply(text)
         await asyncio.sleep(15)
         await m.delete()
+        await e.delete()
 
     except Exception as ex:
         mark_plugin_error(PLUGIN_NAME, ex)
         await log_error(bot, PLUGIN_NAME, ex)
+
+mark_plugin_loaded(PLUGIN_NAME)

@@ -1,3 +1,7 @@
+telegraph
+beautifulsoup4
+pytz
+PyDictionary
 flask
 gunicorn
 requests

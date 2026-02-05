@@ -1,4 +1,3 @@
-telegraph
 pytz
 PyDictionary
 flask

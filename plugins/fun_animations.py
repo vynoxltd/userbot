@@ -13,7 +13,7 @@ print("✔ fun_animations.py loaded (FUN v1)")
 # HELP
 # =====================
 register_help(
-    "fun",
+    "funanimation",
     ".policethief\n"
     ".reality (reply)\n"
     ".experiment (reply)\n\n"

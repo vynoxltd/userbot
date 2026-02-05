@@ -50,7 +50,7 @@ async def show_time(e):
         await e.edit(
             f"🕒 **Current Time**\n"
             f"• Timezone: `{USER_TIMEZONE}`\n"
-            f"• Time: `{now.strftime('%H:%M:%S')}`"
+            f"• Time: `{now.strftime('%I:%M:%S %p').lstrip('0')}`"
         )
     except Exception as ex:
         await log_error(bot, PLUGIN_NAME, ex)
@@ -64,7 +64,8 @@ async def show_date(e):
         await e.edit(
             f"📅 **Current Date**\n"
             f"• Timezone: `{USER_TIMEZONE}`\n"
-            f"• Date: `{now.strftime('%d %B %Y (%A)')}`"
+            f"• Date: `{now.strftime('%d %B %Y (%A)')}`\n"
+            f"• Time: `{now.strftime('%I:%M %p').lstrip('0')}`"
         )
     except Exception as ex:
         await log_error(bot, PLUGIN_NAME, ex)

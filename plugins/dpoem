@@ -1,0 +1,86 @@
+# Made By @Senku_Ishigamiii (SAFE VERSION)
+# Converted for Telethon Userbot
+
+import asyncio
+import random
+from telethon import events
+from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
+from utils.logger import log_error
+  
+from userbot import bot
+from utils.help_registry import register_help
+
+PLUGIN_NAME = "dpoem.py"
+print("✔ dpoem.py loaded (RANDOM DARK POEMS)")
+
+DEFAULTUSER = "ULTROID USER"
+
+POEMS = [
+    "Roses are red 🌹\n"
+    "Violets are blue 💙\n"
+    "my superpower is\n"
+    "I can cum on you",
+
+    "Roses are red 🌹\n"
+    "Coffee is brown ☕\n"
+    "when you kissed me\n"
+    "I immediately grew",
+  
+    "Roses are red 🌹\n"
+    "Violets are blue\n"
+    "should have turned on the light\n"
+    "now my child will moo.",
+
+    "Roses are red 🌹\n"
+    "Violets are blue\n"
+    "Now that I've cum\n"
+    "I bid you adieu",
+
+    "Roses are red 🌹\n"
+    "Violets are blue\n"
+    "i do only anal\n"
+    "I thought you knew",
+
+    "Roses are red 🌹\n"
+    "Violets are blue\n"
+    "Can i fill you up\n"
+    "with my special fondue?",
+
+    "Roses are red\n"
+    "Violets are blue\n"
+    "in my pants\n"
+    "I'm hiding a statue",
+
+    "Roses are red\n"
+    "Violets are blue\n"
+    "if I said you're pretty\n"
+    "would you touch my bamboo?",
+
+    "Roses are red\n"
+    "Violets are blue\n"
+    "I’ve got five fingers\n"
+    "Guess which one is for you?",
+]
+
+@bot.on(events.NewMessage(pattern=r"\.dpoem$"))
+async def random_poem(e):
+    poem = random.choice(POEMS)
+
+    await e.edit("✍️ Writing a poem...")
+    await asyncio.sleep(2)
+
+    await e.edit(
+        f"{poem}\n\n"
+        f"✍️ **{DEFAULTUSER}**"
+    )
+
+# =====================
+# HELP
+# =====================
+register_help(
+    "poem",
+    ".dpoem\n\n"
+    "• Sends a random fun poem\n"
+    "• Safe & clean content\n"
+    "• Telethon compatible"
+)

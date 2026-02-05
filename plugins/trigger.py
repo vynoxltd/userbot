@@ -1,11 +1,12 @@
-# Triggered Meme Plugin
-# Converted for Telethon Userbot
-# Original credits respected
+# Triggered Meme Plugin (FIXED)
+# Async-safe Telethon Userbot Plugin
 
 import os
-from requests import get
-from telegraph import upload_file as uplu
+import aiohttp
+from urllib.parse import quote
+
 from telethon import events
+from telegraph import upload_file as uplu
 
 from userbot import bot
 from utils.help_registry import register_help
@@ -13,14 +14,14 @@ from utils.logger import log_error
 from utils.plugin_status import mark_plugin_loaded, mark_plugin_error
 
 PLUGIN_NAME = "ptrigger.py"
-print("✔ ptrigger.py loaded (Triggered Meme)")
+print("✔ ptrigger.py loaded (Triggered Meme – FIXED)")
 
 
 @bot.on(events.NewMessage(pattern=r"\.ptrigger$"))
 async def ptrigger(e):
     try:
         if not e.is_reply:
-            return await e.edit("❌ Reply to a message!")
+            return await e.edit("❌ Reply to a user's message")
 
         msg = await e.edit("⚙️ Processing...")
 
@@ -28,27 +29,34 @@ async def ptrigger(e):
         user = await reply.get_sender()
 
         # Download profile photo
-        foto = await bot.download_profile_photo(user.id)
-        if not foto:
-            return await msg.edit("❌ Replied user has no profile photo!")
+        photo = await bot.download_profile_photo(user.id)
+        if not photo:
+            return await msg.edit("❌ User has no profile photo")
 
         # Upload to telegraph
-        avatar = uplu(foto)
+        avatar = uplu(photo)
         img_url = f"https://telegra.ph{avatar[0]}"
+        img_url = quote(img_url, safe="")  # URL encode
 
-        # Triggered GIF via working API
-        r = get(
-            f"https://api.popcat.xyz/triggered?image={img_url}",
-            allow_redirects=True
-        )
+        api_url = f"https://api.popcat.xyz/triggered?image={img_url}"
 
-        with open("triggered.gif", "wb") as f:
-            f.write(r.content)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url) as resp:
+                if resp.status != 200:
+                    os.remove(photo)
+                    return await msg.edit("❌ Trigger API failed")
 
-        # Send GIF
+                data = await resp.read()
+
+        # Save GIF
+        gif_file = "triggered.gif"
+        with open(gif_file, "wb") as f:
+            f.write(data)
+
+        # Send result
         await bot.send_file(
             e.chat_id,
-            "triggered.gif",
+            gif_file,
             caption="**Triggered 😡**",
             reply_to=reply.id
         )
@@ -56,12 +64,13 @@ async def ptrigger(e):
         await msg.delete()
 
         # Cleanup
-        os.remove(foto)
-        os.remove("triggered.gif")
+        os.remove(photo)
+        os.remove(gif_file)
 
     except Exception as ex:
         await log_error(bot, PLUGIN_NAME, ex)
         mark_plugin_error(PLUGIN_NAME)
+        await e.edit("❌ Error while generating triggered meme")
 
 
 mark_plugin_loaded(PLUGIN_NAME)
@@ -72,7 +81,8 @@ mark_plugin_loaded(PLUGIN_NAME)
 register_help(
     "ptrigger",
     ".ptrigger (reply)\n\n"
-    "• Creates a triggered meme from user's profile photo\n"
-    "• Reply required\n"
-    "• Uses working API"
-)
+    "• Creates a triggered meme using profile photo\n"
+    "• Async-safe (no hang)\n"
+    "• Auto cleanup\n"
+    "• Uses Popcat API"
+                    )

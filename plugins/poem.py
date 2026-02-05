@@ -19,6 +19,21 @@ POEMS = [
     "And so are you 😌",
 
     "Roses are red 🌹\n"
+    "Dreams feel near ✨\n"
+    "I’ll start tomorrow\n"
+    "That’s been my year 😅",
+
+    "Roses are red 🌹\n"
+    "Violets are blue 💙\n"
+    "I respect everyone\n"
+    "But not people like you 😏",
+
+    "Roses are red 🌹\n"
+    "Night feels long 🌙\n"
+    "I pretend I’m strong\n"
+    "But everything feels wrong 😞",
+
+    "Roses are red 🌹\n"
     "Coffee is brown ☕\n"
     "Mondays are evil\n"
     "But we still get around 😴",
@@ -27,6 +42,11 @@ POEMS = [
     "Sky is wide 🌌\n"
     "I had motivation\n"
     "But it suddenly died 💀",
+
+    "I talk less now 🤍\n"
+    "Not because I’m okay\n"
+    "Because explaining pain\n"
+    "Never changes a thing 😞",
 
     "Roses are red 🌹\n"
     "Night feels deep 🌙\n"

@@ -5,6 +5,7 @@ import asyncio
 import requests
 from telethon import events
 
+from utils.plugin_manager import is_plugin_disabled
 from userbot import bot
 from utils.owner import is_owner
 from utils.help_registry import register_help
